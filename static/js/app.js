@@ -2253,40 +2253,61 @@
       }
       const reader = new FileReader();
       reader.onload = (ev) => {
-        const dataUrl = ev.target.result;
-        state.originalImageBase64 = dataUrl;
-        state.referenceImageBase64 = dataUrl.split(',')[1];
-        state.referenceMimeType = file.type || 'image/jpeg';
-        state.previousVersion = null;
-        state.currentProduction = null;
-        state.activeVersion = null;
+        const rawDataUrl = ev.target.result;
+        const tempImg = new Image();
+        tempImg.onload = () => {
+          const maxDim = 1536;
+          let w = tempImg.width;
+          let h = tempImg.height;
 
-        const thumb = document.getElementById('intent-thumbnail-img');
-        const filename = document.getElementById('intent-filename-text');
-        const filesize = document.getElementById('intent-filesize-text');
-        if (thumb) thumb.src = dataUrl;
-        if (filename) filename.textContent = file.name;
-        if (filesize) filesize.textContent = `${Math.round(file.size / 1024)} KB · Camadas não-destrutivas ativas`;
+          let dataUrl = rawDataUrl;
+          if (Math.max(w, h) > maxDim) {
+            const scale = maxDim / Math.max(w, h);
+            w = Math.round(w * scale);
+            h = Math.round(h * scale);
+            const c = document.createElement('canvas');
+            c.width = w;
+            c.height = h;
+            const ctx = c.getContext('2d');
+            ctx.drawImage(tempImg, 0, 0, w, h);
+            dataUrl = c.toDataURL('image/jpeg', 0.92);
+          }
 
-        // Atualiza imediatamente todos os visualizadores de palco com a foto importada
-        const splitBefore = document.getElementById('split-before-img');
-        const splitAfter = document.getElementById('split-after-img');
-        const resultImg = document.getElementById('result-image');
-        const sbsBefore = document.getElementById('sbs-before-img');
-        const sbsAfter = document.getElementById('sbs-after-img');
+          state.originalImageBase64 = dataUrl;
+          state.referenceImageBase64 = dataUrl.split(',')[1];
+          state.referenceMimeType = 'image/jpeg';
+          state.previousVersion = null;
+          state.currentProduction = null;
+          state.activeVersion = null;
 
-        if (splitBefore) splitBefore.src = dataUrl;
-        if (splitAfter) splitAfter.src = dataUrl;
-        if (resultImg) resultImg.src = dataUrl;
-        if (sbsBefore) sbsBefore.src = dataUrl;
-        if (sbsAfter) sbsAfter.src = dataUrl;
+          const thumb = document.getElementById('intent-thumbnail-img');
+          const filename = document.getElementById('intent-filename-text');
+          const filesize = document.getElementById('intent-filesize-text');
+          if (thumb) thumb.src = dataUrl;
+          if (filename) filename.textContent = file.name;
+          if (filesize) filesize.textContent = `${w}×${h}px · ${Math.round((dataUrl.length * 0.75) / 1024)} KB · Calibração Studio HD`;
 
-        // Mantém o palco visível com a foto real
-        document.getElementById('state-empty')?.classList.add('hidden');
-        document.getElementById('state-success')?.classList.remove('hidden');
+          // Atualiza imediatamente todos os visualizadores de palco com a foto importada
+          const splitBefore = document.getElementById('split-before-img');
+          const splitAfter = document.getElementById('split-after-img');
+          const resultImg = document.getElementById('result-image');
+          const sbsBefore = document.getElementById('sbs-before-img');
+          const sbsAfter = document.getElementById('sbs-after-img');
 
-        showToast('Foto importada! Escolha o que deseja melhorar.');
-        setStudioStep(2);
+          if (splitBefore) splitBefore.src = dataUrl;
+          if (splitAfter) splitAfter.src = dataUrl;
+          if (resultImg) resultImg.src = dataUrl;
+          if (sbsBefore) sbsBefore.src = dataUrl;
+          if (sbsAfter) sbsAfter.src = dataUrl;
+
+          // Mantém o palco visível com a foto real
+          document.getElementById('state-empty')?.classList.add('hidden');
+          document.getElementById('state-success')?.classList.remove('hidden');
+
+          showToast('Foto importada e otimizada com sucesso!');
+          setStudioStep(2);
+        };
+        tempImg.src = rawDataUrl;
       };
       reader.readAsDataURL(file);
     }

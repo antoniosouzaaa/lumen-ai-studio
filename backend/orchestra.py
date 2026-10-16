@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import gc
 import hashlib
 import io
 import json
@@ -32,6 +33,22 @@ except ImportError:
 load_dotenv()
 
 logger = logging.getLogger("lumen.orchestra")
+
+
+def ensure_memory_safe_image(img: Image.Image, max_dim: int = 1536) -> Image.Image:
+    """
+    Garante que a imagem permaneça estritamente dentro de limites seguros de memória
+    para instâncias com teto de 512MB de RAM (Render Free).
+    Redimensiona proporcionalmente usando Lanczos se max(w, h) > max_dim.
+    """
+    w, h = img.size
+    if max(w, h) <= max_dim:
+        return img
+    scale = max_dim / float(max(w, h))
+    new_w = max(1, int(round(w * scale)))
+    new_h = max(1, int(round(h * scale)))
+    return img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+
 
 ACTIVE_GEMINI_MODELS = [
     "gemini-2.5-flash",
@@ -277,7 +294,7 @@ class JobRecord(BaseModel):
 
 JOB_STORE: Dict[str, JobRecord] = {}
 IDEMPOTENCY_INDEX: Dict[str, str] = {}
-MAX_STORED_JOBS = 120
+MAX_STORED_JOBS = 15
 
 
 def create_or_get_job(params: ProductionRequest) -> Tuple[JobRecord, bool]:
@@ -856,7 +873,8 @@ def compute_image_histogram_and_clipping(
     Calcula o histograma real de 64 bins para Luminância, R, G e B, além de avisos
     de altas luzes estouradas (highlight clipping >= 250) e sombras fechadas (shadow crush <= 5).
     """
-    with Image.open(io.BytesIO(image_bytes)) as img:
+    with Image.open(io.BytesIO(image_bytes)) as raw_img:
+        img = ensure_memory_safe_image(raw_img, max_dim=512)
         rgb = img.convert("RGB")
         lum = rgb.convert("L")
         w, h = rgb.size
@@ -2624,7 +2642,8 @@ def run_optical_spatial_relight(
     reflexo especular para o Rim Light e preenchimento difuso para o Fill Light,
     fundindo com a microtextura e identidade da imagem original.
     """
-    with Image.open(io.BytesIO(image_bytes)) as img:
+    with Image.open(io.BytesIO(image_bytes)) as raw_img:
+        img = ensure_memory_safe_image(raw_img, max_dim=1536)
         rgb = img.convert("RGB")
         w, h = rgb.size
         arr = np.array(rgb, dtype=np.float32)
@@ -2692,7 +2711,13 @@ def run_optical_spatial_relight(
         comp = Image.fromarray(np.stack([final_rgb, final_g, final_b], axis=2))
         buf = io.BytesIO()
         comp.save(buf, format="JPEG", quality=95)
-        return buf.getvalue()
+        out_bytes = buf.getvalue()
+
+        # Limpeza agressiva de memória temporária
+        del arr, lum_arr, nx, ny, nz, dot, diffuse_arr, lit_r, lit_g, lit_b, final_rgb, final_g, final_b
+        gc.collect()
+
+        return out_bytes
 
 
 async def run_neural_relight(
@@ -2757,7 +2782,8 @@ def apply_studio_backdrop(
     (Branco Puro de Catálogo 255,255,255, Cinza Neutro 18%, Preto Infinito, Transparente ou Gradiente)
     com sombra de contato física calculada na base.
     """
-    with Image.open(io.BytesIO(image_bytes)) as img:
+    with Image.open(io.BytesIO(image_bytes)) as raw_img:
+        img = ensure_memory_safe_image(raw_img, max_dim=1536)
         rgba = img.convert("RGBA")
         w, h = rgba.size
         arr = np.array(rgba, dtype=np.float32)
@@ -2991,6 +3017,9 @@ class ReviewService:
     def create_or_get_session(self, session_id: Optional[str] = None, title: str = "Sessão de Aprovação", photographer: str = "LUMEN Studio") -> ReviewSession:
         sid = session_id or f"live_{uuid.uuid4().hex[:8]}"
         if sid not in self._sessions:
+            if len(self._sessions) >= 6:
+                oldest_sid = next(iter(self._sessions))
+                self._sessions.pop(oldest_sid, None)
             self._sessions[sid] = ReviewSession(
                 session_id=sid,
                 title=title,
@@ -3003,6 +3032,8 @@ class ReviewService:
 
     def add_item(self, session_id: str, image_base64: str, title: str = "Produção") -> ReviewSessionItem:
         sess = self.create_or_get_session(session_id)
+        if len(sess.items) >= 3:
+            sess.items.pop(0)
         item_id = f"item_{uuid.uuid4().hex[:8]}"
         item = ReviewSessionItem(id=item_id, image_base64=image_base64, title=title)
         sess.items.append(item)
