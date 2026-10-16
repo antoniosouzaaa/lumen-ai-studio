@@ -1541,7 +1541,7 @@ async def _synthesize_ai_horde(
     headers = {"apikey": "0000000000", "Client-Agent": "LumenStudio:1.0:anon"}
 
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=45.0) as client:
             resp = await client.post(
                 "https://aihorde.net/api/v2/generate/async",
                 json=payload,
@@ -1554,7 +1554,7 @@ async def _synthesize_ai_horde(
             if not job_id:
                 return None
 
-            for _ in range(12):
+            for _ in range(25):
                 await asyncio.sleep(1.5)
                 chk = await client.get(
                     f"https://aihorde.net/api/v2/generate/check/{job_id}",
