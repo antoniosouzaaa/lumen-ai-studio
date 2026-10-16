@@ -13,7 +13,7 @@ import httpx
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
-from PIL import Image, ImageStat
+from PIL import Image, ImageChops, ImageEnhance, ImageFilter, ImageStat
 from pydantic import BaseModel, Field
 
 load_dotenv()
@@ -138,7 +138,7 @@ class QAOutput(BaseModel):
 
 
 DIRECTOR_SYSTEM_PROMPT = """Você é o Diretor de Fotografia Sênior do estúdio LUMEN: AI PHOTOGRAPHY STUDIO.
-PADRÃO DE QUALIDADE EXIGIDO: Fotografia comercial e editorial de altíssimo nível, capturada em AMBIENTE 100% CONTROLADO DE ESTÚDIO (ou locação com iluminação de cinema 100% controlada por rebatedores, bandeiras de negative fill e modificadores ópticos Profoto/ARRI), usando câmera de médio formato Hasselblad H6D-100c, geometria perfeita sem distorções, nitidez cirúrgica na textura principal e profundidade de campo óptica autêntica.
+PADRÃO DE QUALIDADE EXIGIDO: Fotografia publicitária, documental e comercial de campanha global (nível Nike, Adidas, UEFA, Vogue, Leica/Phase One), indistinguível de uma fotografia RAW real capturada em ambiente 100% controlado (seja em estúdio fechado ou em locação cinematográfica controlada como um estádio ao crepúsculo), com textura óptica autêntica, geometria impecável sem distorções e profundidade de campo natural.
 
 SUA MISSÃO PRINCIPAL:
 Traduzir com precisão absoluta a GEOMETRIA ESPACIAL DA LUZ definida pelo usuário no Radar 360° somada à descrição em linguagem natural:
@@ -152,9 +152,11 @@ Traduzir com precisão absoluta a GEOMETRIA ESPACIAL DA LUZ definida pelo usuár
   - 250° a 290° = Luz Lateral 90° pela ESQUERDA (split side lighting from the left edge of the frame).
   - 300° a 335° = Luz a 45° pela ESQUERDA da câmera (classic Rembrandt key light from camera-left, casting shadow toward the right side).
 
-REGRAS ESTRITAS E INEGOCIÁVEIS:
-1. O `final_prompt` (em INGLÊS) DEVE descrever uma fotografia de estúdio 100% controlado:
-   - Especifique a geometria perfeita do sujeito (ex: perfectly spherical geometry if a ball, anatomically precise proportions if a person, crisp architectural lines), texturas táteis de alta definição (tactile surface micro-texture, leather stitching, skin pores, water droplets), modificadores de luz controlada (controlled studio key light with softbox diffuser, negative fill flags for deep clean shadows, crisp specular highlights) e captura em médio formato (Hasselblad H6D-100c medium format optical capture).
+REGRAS ESTRITAS E INEGOCIÁVEIS PARA FOTOGRAFIA REAL (ANTI-CGI):
+1. O `final_prompt` (em INGLÊS) DEVE soar como uma descrição de fotografia RAW documental/publicitária real:
+   - Se a cena for em LOCAÇÃO ABERTA / ESTÁDIO / CAMPO / RUA (ex: bola no gramado de um estádio): use enquadramento médio-aberto a 2 metros de distância (`medium-wide environmental composition shot from 2 meters distance with 28mm or 35mm lens at f/4 or f/8 deep focus`), onde o sujeito principal ocupa ~25% da parte inferior/central do quadro com amplo respiro ao redor, permitindo ver nitidamente o contexto real ao fundo (arquibancadas lotadas, estrutura metálica do teto, traves brancas, painéis de LED, torres de refletores acesas brilhando contra o céu do crepúsculo com *lens bloom* óptico natural) sem borrão sintético exagerado (*no fake miniature tilt-shift blur*).
+   - Especifique imperfeições orgânicas reais que provam que a foto é real: grama natural com pequenos tufos de terra e desgaste real, linha de cal branca pintada na grama, textura micro-granulada dos gomos termo-soldados da bola **sem qualquer texto ou letras falsas** (`clean textless unbranded geometric panels with zero letters, no words, no gibberish text`).
+   - Se a cena for em ESTÚDIO FECHADO: especifique ciclorama infinito ou bancada tátil real, modificadores Profoto/ARRI, *negative fill* para sombras densas e captura em médio formato Phase One IQ4 / Hasselblad H6D-100c.
 2. Se `relight_mode=True` (Reiluminação de foto pronta): mantenha a composição, o sujeito e o cenário idênticos ao `previous_prompt`, alterando APENAS a direção física das luzes, sombras e temperatura luminosa para refletir a nova posição do Radar 360°!
 3. Decida automaticamente a melhor óptica para a cena:
    - `lens`: "24mm", "35mm", "50mm", ou "85mm".
@@ -186,39 +188,39 @@ def sanitize_prompt(prompt: str) -> str:
 
 def describe_light_vector_en(light: LightSourceSpec, role: str) -> str:
     if not light.enabled:
-        return f"No {role} (single source controlled studio lighting with deep negative fill flags on the shadow side)."
+        return f"No {role} (single source controlled lighting with deep negative fill flags on the shadow side)."
 
     angle = light.angle_deg % 360
     if angle <= 25 or angle >= 335:
-        dir_en = "directly from the front (on-axis studio beauty dish light)"
+        dir_en = "directly from the front (on-axis beauty dish light)"
     elif 25 < angle <= 68:
-        dir_en = "from 45-degrees camera-right (precision Profoto softbox illuminating the right side of the subject, casting clean controlled shadows to the left)"
+        dir_en = "from 45-degrees camera-right (precision softbox illuminating the right side of the subject, casting clean controlled shadows to the left)"
     elif 68 < angle <= 112:
-        dir_en = "from 90-degrees hard side camera-right (dramatic studio split lighting from the right edge, left side in deep controlled shadow)"
+        dir_en = "from 90-degrees hard side camera-right (dramatic split lighting from the right edge, left side in deep controlled shadow)"
     elif 112 < angle <= 158:
         dir_en = "from 135-degrees back-right behind the subject's right side (crisp optical rim light)"
     elif 158 < angle <= 202:
-        dir_en = "from 180-degrees directly behind the subject (pure rear studio backlight creating a crisp glowing rim halo)"
+        dir_en = "from 180-degrees directly behind the subject (pure rear backlight creating a crisp glowing rim halo)"
     elif 202 < angle <= 248:
         dir_en = "from 225-degrees back-left behind the subject's left side (crisp optical rim light)"
     elif 248 < angle <= 292:
-        dir_en = "from 270-degrees hard side camera-left (dramatic studio split lighting from the left edge, right side in deep controlled shadow)"
+        dir_en = "from 270-degrees hard side camera-left (dramatic split lighting from the left edge, right side in deep controlled shadow)"
     else:
-        dir_en = "from 315-degrees (45-degrees camera-left Rembrandt studio key light, illuminating the left side of the subject and casting sculptural shadows to the right)"
+        dir_en = "from 315-degrees (45-degrees camera-left Rembrandt key light, illuminating the left side of the subject and casting sculptural shadows to the right)"
 
     if light.distance_pct < 38:
-        elev_en = "high overhead zenithal studio boom elevation"
+        elev_en = "high overhead zenithal boom elevation"
     elif light.distance_pct < 72:
-        elev_en = "classic 45-degree studio stand elevation"
+        elev_en = "classic 45-degree stand elevation"
     else:
-        elev_en = "low horizon grazing studio elevation"
+        elev_en = "low horizon grazing elevation"
 
     color_map = {
         "Luz do Dia": "pure calibrated 5600K daylight",
         "Sol Dourado": "warm 3500K golden sunlight gel",
-        "Tungstênio Âmbar": "warm 2700K amber tungsten studio lamp",
-        "Frio Noturno": "cool 8000K steel-blue studio rim gel",
-        "Rosa Crepúsculo": "soft warm magenta-rose studio gel",
+        "Tungstênio Âmbar": "warm 2700K amber tungsten lamp",
+        "Frio Noturno": "cool 8000K steel-blue rim gel",
+        "Rosa Crepúsculo": "soft warm magenta-rose gel",
     }
     color_en = color_map.get(light.color_label, light.color_label)
 
@@ -233,27 +235,75 @@ def enforce_controlled_studio_optics(
     rig: SpatialLightingRig,
 ) -> str:
     """
-    Garante que todo prompt enviado ao motor gráfico contenha especificações de
-    estúdio 100% controlado, médio formato Hasselblad e geometria sem distorções.
+    Calibra o prompt com física óptica autêntica de câmera RAW (Canon EOS R3 / Phase One IQ4),
+    diferenciando automaticamente produções em locação/estádio (plano médio-aberto com contexto
+    nítido e sem textos falsos) de produções em estúdio fechado.
     """
     key_en = describe_light_vector_en(rig.key_light, "Key Light")
     rim_en = describe_light_vector_en(rig.rim_light, "Rim Light")
 
     film_look_map = {
-        "Kodak Portra 400": "calibrated Kodak Portra 400 color science with natural warm highlights and fine organic texture",
-        "CineStill 800T": "calibrated CineStill 800T tungsten color science with deep cool shadows and subtle highlight halation",
-        "Neutro": "pure neutral commercial color calibration with maximum dynamic range",
+        "Kodak Portra 400": "authentic Kodak Portra 400 color science with natural warm highlights and organic 35mm sensor grain",
+        "CineStill 800T": "authentic CineStill 800T tungsten color science with deep cool shadows and natural optical halation on bright lights",
+        "Neutro": "authentic unedited RAW camera color calibration with natural dynamic range and subtle CMOS sensor texture",
     }
     film_en = film_look_map.get(film, film_look_map["Neutro"])
 
-    enhanced = (
-        f"High-end commercial photograph shot in a 100% controlled professional photography studio environment: "
-        f"{raw_prompt.strip('. ')}. "
-        f"Controlled Studio Lighting Rig: {key_en} {rim_en} "
-        f"Captured on Hasselblad H6D-100c medium format camera with {lens} prime lens at {aperture}, "
-        f"perfectly accurate geometry with zero distortion, razor-sharp tactile surface micro-texture, "
-        f"controlled negative fill shadows, {film_en}."
+    lower_p = raw_prompt.lower()
+    is_stadium_or_ball = any(
+        w in lower_p
+        for w in [
+            "soccer",
+            "football",
+            "bola",
+            "stadium",
+            "estádio",
+            "pitch",
+            "gramado",
+            "grama",
+            "turf",
+        ]
     )
+    is_location = is_stadium_or_ball or any(
+        w in lower_p
+        for w in [
+            "street",
+            "rua",
+            "beach",
+            "praia",
+            "mountain",
+            "city",
+            "cidade",
+            "forest",
+            "landscape",
+            "outdoor",
+        ]
+    )
+
+    if is_stadium_or_ball:
+        enhanced = (
+            f"RAW unedited documentary sports campaign photograph shot on Canon EOS R3 full-frame camera with 28mm f/4 wide-angle lens from 2.2 meters distance at low pitch level "
+            f"(medium-wide environmental framing where the subject occupies one-fourth of the lower-center frame with generous surrounding turf): "
+            f"{raw_prompt.strip('. ')}. "
+            f"Clean textless unbranded geometric panels with zero letters or words, natural stadium grass with small organic soil divots and painted white field line, "
+            f"detailed stadium stands with spectators, perimeter LED boards, goalposts, and blazing stadium floodlight tower with natural optical lens bloom against the twilight sky. "
+            f"Controlled Directional Lighting Rig: {key_en} {rim_en} "
+            f"Accurate spherical geometry with zero distortion, {film_en}."
+        )
+    elif is_location:
+        enhanced = (
+            f"RAW unedited commercial editorial photograph shot on Phase One IQ4 150MP with {lens} prime lens at {aperture} in a 100% lighting-controlled location environment: "
+            f"{raw_prompt.strip('. ')}. "
+            f"Controlled Directional Lighting Rig: {key_en} {rim_en} "
+            f"Perfect optical geometry with zero distortion, crisp tactile surface micro-texture, natural environmental depth, {film_en}."
+        )
+    else:
+        enhanced = (
+            f"RAW unedited commercial photograph shot in a 100% controlled professional photography studio on Hasselblad H6D-100c medium format camera with {lens} prime lens at {aperture}: "
+            f"{raw_prompt.strip('. ')}. "
+            f"Controlled Studio Lighting Rig: {key_en} {rim_en} "
+            f"Perfectly accurate geometry with zero distortion, razor-sharp tactile surface micro-texture, controlled negative fill shadows, {film_en}."
+        )
     return sanitize_prompt(enhanced)
 
 
@@ -261,19 +311,31 @@ def build_deterministic_direction(params: ProductionRequest) -> DirectorOutput:
     text_lower = f"{params.brief} {params.refinement_instruction or ''}".lower()
     rig = params.lighting_rig or SpatialLightingRig()
 
+    is_stadium_or_ball = any(
+        w in text_lower
+        for w in ["bola", "futebol", "estádio", "gramado", "campo", "soccer", "stadium"]
+    )
+
     lens: Literal["24mm", "35mm", "50mm", "85mm"] = "50mm"
-    if any(w in text_lower for w in ["retrato", "rosto", "olhar", "close", "mulher", "homem", "pessoa", "bola", "produto", "relógio", "perfume"]):
+    if is_stadium_or_ball:
+        lens = "35mm"
+    elif any(
+        w in text_lower
+        for w in ["retrato", "rosto", "olhar", "close", "mulher", "homem", "pessoa", "produto", "relógio", "perfume"]
+    ):
         lens = "85mm"
-    elif any(w in text_lower for w in ["paisagem", "arquitetura", "amplo", "aberta", "estádio"]):
+    elif any(w in text_lower for w in ["paisagem", "arquitetura", "amplo", "aberta"]):
         lens = "24mm"
     elif any(w in text_lower for w in ["rua", "ambiente", "documental"]):
         lens = "35mm"
 
     aperture: Literal["f/1.4", "f/2.8", "f/8"] = "f/2.8"
-    if any(w in text_lower for w in ["bem desfocado", "intimista", "retrato"]):
-        aperture = "f/1.4"
-    elif any(w in text_lower for w in ["tudo em foco", "paisagem", "arquitetura", "nítido"]):
+    if is_stadium_or_ball or any(
+        w in text_lower for w in ["tudo em foco", "paisagem", "arquitetura", "nítido", "estádio"]
+    ):
         aperture = "f/8"
+    elif any(w in text_lower for w in ["bem desfocado", "intimista", "retrato"]):
+        aperture = "f/1.4"
 
     film: Literal["Kodak Portra 400", "CineStill 800T", "Neutro"] = "Kodak Portra 400"
     if any(w in text_lower for w in ["noite", "noturn", "neon", "bar", "beco", "poste", "chuva"]):
@@ -306,9 +368,9 @@ def build_deterministic_direction(params: ProductionRequest) -> DirectorOutput:
         or f"Luz principal ({rig.key_light.color_label}) a {rig.key_light.angle_deg}°"
     )
     camera_optics = (
-        f"Produção configurada em ambiente 100% controlado de estúdio (médio formato Hasselblad {lens} em {aperture}). "
-        f"O Palco de Luz 360° foi calibrado com {spatial_pt.lower()}, utilizando rebatedores de contraste (negative fill) "
-        f"para garantir textura nítida, geometria perfeita sem distorções e controle absoluto das sombras."
+        f"Produção configurada com óptica {lens} em {aperture} e masterização RAW Capture One Pro. "
+        f"O Palco de Luz 360° foi calibrado com {spatial_pt.lower()}, preservando microtextura orgânica real, "
+        f"geometria perfeita sem distorções e profundidade óptica autêntica."
     )
 
     return DirectorOutput(
@@ -338,18 +400,48 @@ def analyze_image_optics_pillow(
     return QAOutput(
         score=score,
         lighting=(
-            f"Iluminação de estúdio controlado fiel ao Palco 360° ({spatial_summary or 'luz direcional calibrada'}), "
-            f"com recorte limpo nas altas luzes e sombras densas sem perda de detalhe."
+            f"Iluminação direcional fiel ao Palco 360° ({spatial_summary or 'luz direcional calibrada'}), "
+            f"com bloom óptico controlado nas altas luzes e sombras densas."
         ),
         lens_coherence=(
             f"Geometria óptica íntegra e sem distorções na lente {direction.lens} ({direction.aperture}), "
-            f"mantendo nitidez crítica no plano focal principal."
+            f"mantendo nitidez crítica no plano focal e perspectiva realista."
         ),
         notes=(
-            f"Microtextura de superfície preservada em resolução nativa ({direction.aspect_ratio}) com perfil {direction.film}."
+            f"Masterização RAW Capture One Pro aplicada (micro-acutância óptica + textura de sensor CMOS em {direction.aspect_ratio})."
         ),
-        improvement_suggestion="Experimente girar a Luz Principal para 90° (Lateral Split) no Radar 360° para testar um contraste ainda mais dramático de estúdio.",
+        improvement_suggestion="Experimente girar a Luz Principal para 90° (Lateral Split) no Radar 360° para testar um contraste ainda mais dramático.",
     )
+
+
+def master_raw_studio_photograph(img: Image.Image) -> Image.Image:
+    """
+    Pipeline de Masterização Óptica Capture One Pro / Phase One IQ4:
+    1. Halation / Bloom óptico sutil nas fontes de luz especular (>220 luminância, como refletores de estádio).
+    2. Micro-acutância sub-pixel de lente prime Rodenstock (UnsharpMask calibrado).
+    3. Grão de luminância monocromático orgânico de sensor full-frame CMOS (elimina o aspecto liso de compressão WebP).
+    4. Curva de densidade tonal comercial.
+    """
+    w, h = img.size
+    lum = img.convert("L")
+    hi_mask = lum.point(lambda p: max(0, min(255, int((p - 220) * 4.8))))
+    bloom_radius = max(6, int(min(w, h) * 0.018))
+    bloom = img.filter(ImageFilter.GaussianBlur(radius=bloom_radius))
+    bloom_masked = Image.composite(bloom, Image.new("RGB", (w, h), (0, 0, 0)), hi_mask)
+    img = ImageChops.screen(img, ImageEnhance.Brightness(bloom_masked).enhance(0.24))
+
+    img = img.filter(ImageFilter.UnsharpMask(radius=1.05, percent=68, threshold=2))
+
+    try:
+        noise = Image.effect_noise((w, h), 3.8).convert("L")
+        noise_rgb = Image.merge("RGB", (noise, noise, noise))
+        img = Image.blend(img, ImageChops.overlay(img, noise_rgb), 0.042)
+    except Exception:
+        pass
+
+    img = ImageEnhance.Contrast(img).enhance(1.04)
+    img = ImageEnhance.Color(img).enhance(1.03)
+    return img
 
 
 def embed_exif_and_crop(
@@ -359,8 +451,8 @@ def embed_exif_and_crop(
     metadata_info: Optional[Dict[str, str]] = None,
 ) -> bytes:
     """
-    Preserva a geometria 1:1 dos pixels realizando apenas corte central proporcional
-    (center crop sem jamais esticar/deformar a imagem) e grava metadados EXIF em JPEG quality=96.
+    Preserva a geometria 1:1 dos pixels realizando apenas corte central proporcional,
+    aplica masterização óptica RAW Capture One Pro e grava metadados EXIF em JPEG 4:4:4 (quality=98).
     """
     ratio_map = {
         "16:9": 16.0 / 9.0,
@@ -400,15 +492,16 @@ def embed_exif_and_crop(
         bottom = top + new_height
 
         cropped = img.crop((left, top, right, bottom))
+        mastered = master_raw_studio_photograph(cropped)
 
-        exif = cropped.getexif()
+        exif = mastered.getexif()
         exif[0x010F] = "LUMEN"
-        exif[0x0110] = "LUMEN 360 Studio Medium Format"
-        exif[0x0131] = "LUMEN Optical Engine v3.2"
+        exif[0x0110] = "LUMEN 360 RAW Optical Studio"
+        exif[0x0131] = "LUMEN Capture One Optical Engine v4.0"
         exif[0x013B] = "LUMEN Studio"
         if metadata_info:
             desc = (
-                f"LUMEN | {metadata_info.get('lens', '85mm')} | "
+                f"LUMEN | {metadata_info.get('lens', '35mm')} | "
                 f"{metadata_info.get('aperture', 'f/2.8')} | "
                 f"{metadata_info.get('film', 'Kodak Portra 400')} | "
                 f"{metadata_info.get('aspect_ratio', aspect_ratio)}"
@@ -416,10 +509,10 @@ def embed_exif_and_crop(
             exif[0x010E] = desc
 
         output_buffer = io.BytesIO()
-        cropped.save(
+        mastered.save(
             output_buffer,
             format="JPEG",
-            quality=96,
+            quality=98,
             subsampling=0,
             optimize=True,
             exif=exif.tobytes(),
@@ -466,7 +559,7 @@ async def run_director_agent(
     rim_en = describe_light_vector_en(rig.rim_light, "SECONDARY STUDIO RIM LIGHT")
 
     prompt_parts.append(
-        f"\nAMBIENTE 100% CONTROLADO DE ESTÚDIO + COORDENADAS DO PALCO DE LUZ 360°:\n"
+        f"\nAMBIENTE 100% CONTROLADO + COORDENADAS DO PALCO DE LUZ 360°:\n"
         f"- Resumo espacial no radar: {rig.spatial_summary or 'Luz principal a 45° pela esquerda'}\n"
         f"- {key_en}\n"
         f"- {rim_en}\n"
@@ -478,12 +571,12 @@ async def run_director_agent(
             f"\nDIREÇÃO ITERATIVA / REILUMINAÇÃO SOBRE A CENA ATUAL:\n"
             f"- Prompt da tomada anterior: \"{params.previous_prompt}\"\n"
             f"- Instrução adicional: \"{params.refinement_instruction or 'Reiluminar a mesma cena exatamente com o novo ângulo do Palco de Luz 360°.'}\"\n"
-            f"Mantenha o mesmo sujeito e composição da cena anterior, recalculando a luz de estúdio para o novo ângulo do Radar 360°!"
+            f"Mantenha o mesmo sujeito e composição da cena anterior, recalculando a luz para o novo ângulo do Radar 360°!"
         )
 
     if params.reference_image_base64:
         prompt_parts.append(
-            "\nIMAGEM DE REFERÊNCIA ANEXADA: Extraia a composição e atmosfera da imagem enviada combinando com o ângulo do Palco de Luz 360°."
+            "\nIMAGEM DE REFERÊNCIA ANEXADA: Extraia a composição, distância de câmera, profundidade de campo e atmosfera da imagem enviada combinando com o ângulo do Palco de Luz 360°."
         )
 
     if params.contact_sheet:
@@ -497,7 +590,7 @@ async def run_director_agent(
         system_instruction=DIRECTOR_SYSTEM_PROMPT,
         response_mime_type="application/json",
         response_schema=DirectorOutput,
-        temperature=0.35,
+        temperature=0.3,
     )
 
     for model_name in ACTIVE_GEMINI_MODELS:
@@ -551,8 +644,9 @@ async def _synthesize_bfl_flux_studio(
     seed_offset: int = 0,
 ) -> bytes:
     """
-    Motor de Estúdio de Alta Definição via Black Forest Labs FLUX.1 (resolução nativa
-    1344x768 / 1024x1280 / 1024x1024 / 768x1344, zero marca d'água e zero distorção).
+    Cluster Óptico de Alta Definição FLUX.1 (resolução nativa 1344x768 / 1024x1280 /
+    1024x1024 / 768x1344, calibrado com guidance_scale=1.65 para realismo RAW sem CGI,
+    seguido de masterização óptica Capture One Pro em JPEG 4:4:4 quality=98).
     """
     dim_map = {
         "16:9": (1344, 768),
@@ -563,17 +657,43 @@ async def _synthesize_bfl_flux_studio(
     w, h = dim_map.get(requested_ratio, (1024, 1280))
     seed = random.randint(1000, 999999) + seed_offset
 
-    bfl_spaces = [
-        "https://black-forest-labs-flux-1-schnell.hf.space",
-        "https://multimodalart-flux-1-merged.hf.space",
+    # Cluster ordenado por qualidade fotográfica RAW e assinatura exata de cada endpoint Gradio
+    flux_cluster = [
+        (
+            "https://multimodalart-flux-1-merged.hf.space",
+            "/gradio_api/call/infer",
+            [final_prompt, seed, False, w, h, 1.65, 10],
+        ),
+        (
+            "https://damarjati-flux-1-realismlora.hf.space",
+            "/gradio_api/call/run_lora",
+            [final_prompt, 2.2, 16, False, seed, w, h, 0.85],
+        ),
+        (
+            "https://black-forest-labs-flux-1-schnell.hf.space",
+            "/gradio_api/call/infer",
+            [final_prompt, seed, False, w, h, 4],
+        ),
+        (
+            "https://kingnish-realtime-flux.hf.space",
+            "/gradio_api/call/RealtimeFlux",
+            [final_prompt, seed, w, h, False, 6],
+        ),
     ]
 
-    async with httpx.AsyncClient(timeout=55.0, follow_redirects=True) as http_client:
-        for base_space in bfl_spaces:
+    headers: Dict[str, str] = {}
+    hf_token = os.getenv("HF_TOKEN", "").strip()
+    if hf_token:
+        headers["Authorization"] = f"Bearer {hf_token}"
+
+    async with httpx.AsyncClient(
+        timeout=55.0, follow_redirects=True, headers=headers
+    ) as http_client:
+        for base_space, endpoint, payload_data in flux_cluster:
             try:
                 call_resp = await http_client.post(
-                    f"{base_space}/gradio_api/call/infer",
-                    json={"data": [final_prompt, seed, False, w, h, 4]},
+                    f"{base_space}{endpoint}",
+                    json={"data": payload_data},
                 )
                 if call_resp.status_code != 200:
                     continue
@@ -582,9 +702,9 @@ async def _synthesize_bfl_flux_studio(
                     continue
 
                 sse_resp = await http_client.get(
-                    f"{base_space}/gradio_api/call/infer/{event_id}"
+                    f"{base_space}{endpoint}/{event_id}"
                 )
-                if sse_resp.status_code != 200:
+                if sse_resp.status_code != 200 or "event: error" in sse_resp.text:
                     continue
 
                 for line in sse_resp.text.splitlines():
@@ -607,20 +727,15 @@ async def _synthesize_bfl_flux_studio(
                                 metadata_info,
                             )
             except Exception as exc:
-                logger.warning("Space %s indisponível, tentando próximo: %s", base_space, exc)
+                logger.warning(
+                    "Nó óptico %s indisponível, alternando para próximo nó: %s",
+                    base_space,
+                    exc,
+                )
 
-        # Contingência secundária em resolução quadrada 1024x1024 com center-crop exato (sem distorção)
-        short_prompt = final_prompt[:380]
-        encoded = urllib.parse.quote(short_prompt)
-        fallback_url = (
-            f"https://image.pollinations.ai/prompt/{encoded}"
-            f"?width=1024&height=1024&seed={seed}&nologo=true&model=flux"
-        )
-        resp = await http_client.get(fallback_url)
-        resp.raise_for_status()
-        return await asyncio.to_thread(
-            embed_exif_and_crop, resp.content, requested_ratio, 0.05, metadata_info
-        )
+    raise RuntimeError(
+        "Os servidores gráficos de alta definição estão temporariamente ocupados. Aguarde alguns segundos e tente novamente."
+    )
 
 
 async def run_imaging_agent(
