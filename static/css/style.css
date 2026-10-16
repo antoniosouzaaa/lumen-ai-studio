@@ -67,7 +67,6 @@ body {
   outline-offset: 2px !important;
 }
 
-/* Tipografia Técnica */
 .font-mono-tech {
   font-family: var(--font-mono);
 }
@@ -109,10 +108,10 @@ body {
   letter-spacing: 0.02em;
 }
 
-/* Layout Principal (Sidebar + Workspace) */
+/* Layout Principal (Sidebar 360px + Workspace) */
 .lumen-layout {
   display: grid;
-  grid-template-columns: 340px minmax(0, 1fr);
+  grid-template-columns: 364px minmax(0, 1fr);
   min-height: calc(100vh - 64px);
 }
 
@@ -126,10 +125,10 @@ body {
 .lumen-sidebar {
   background-color: var(--color-bg);
   border-right: 1px solid var(--color-border);
-  padding: 20px;
+  padding: 18px 20px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
   overflow-y: auto;
   max-height: calc(100vh - 64px);
 }
@@ -149,22 +148,73 @@ body {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--color-text-secondary);
-  margin-bottom: 8px;
+  margin-bottom: 6px;
+}
+
+/* PALCO DE LUZ ESPACIAL 360° (RADAR INTERATIVO) */
+.lumen-light-stage-box {
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: var(--shadow-panel);
+}
+
+.lumen-radar-canvas-wrap {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#light-stage-canvas {
+  width: 230px;
+  height: 230px;
+  cursor: grab;
+  touch-action: none;
+  border-radius: 50%;
+}
+
+#light-stage-canvas:active {
+  cursor: grabbing;
+}
+
+.lumen-color-swatch {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--color-border-strong);
+  cursor: pointer;
+  transition: transform 120ms ease, border-color 120ms ease;
+}
+
+.lumen-color-swatch:hover {
+  transform: scale(1.12);
+}
+
+.lumen-color-swatch.is-selected {
+  border-color: var(--color-accent);
+  transform: scale(1.15);
 }
 
 /* Textarea do Briefing Criativo */
 .lumen-textarea {
   width: 100%;
-  min-height: 132px;
+  min-height: 98px;
   resize: vertical;
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  padding: 13px;
+  padding: 11px 12px;
   color: var(--color-text);
   font-family: var(--font-sans);
-  font-size: 0.875rem;
-  line-height: 1.55;
+  font-size: 0.85rem;
+  line-height: 1.5;
   transition: border-color 140ms ease, background-color 140ms ease;
 }
 
@@ -191,8 +241,8 @@ body {
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-pill);
-  padding: 5px 10px;
-  font-size: 0.725rem;
+  padding: 4px 9px;
+  font-size: 0.71rem;
   color: var(--color-text-secondary);
   cursor: pointer;
   transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
@@ -209,37 +259,12 @@ body {
   cursor: not-allowed;
 }
 
-.lumen-inspiration-btn {
-  appearance: none;
-  background-color: var(--color-bg-elevated);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: 8px 11px;
-  font-size: 0.74rem;
-  line-height: 1.45;
-  color: var(--color-text-secondary);
-  text-align: left;
-  cursor: pointer;
-  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
-}
-
-.lumen-inspiration-btn:hover:not(:disabled) {
-  background-color: var(--color-surface-hover);
-  border-color: var(--color-border-strong);
-  color: var(--color-ivory);
-}
-
-.lumen-inspiration-btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
 /* Dropzone de Foto de Referência Visual */
 .lumen-ref-dropzone {
   background-color: var(--color-surface);
   border: 1px dashed var(--color-border-strong);
   border-radius: var(--radius-md);
-  padding: 10px 12px;
+  padding: 9px 11px;
   cursor: pointer;
   transition: border-color 140ms ease, background-color 140ms ease;
 }
@@ -257,7 +282,7 @@ body {
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  padding: 10px 12px;
+  padding: 9px 11px;
   color: var(--color-text);
   text-align: left;
   cursor: pointer;
@@ -279,8 +304,8 @@ body {
 }
 
 .lumen-toggle-indicator {
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
   border-radius: var(--radius-pill);
   border: 1.5px solid var(--color-border-strong);
   display: flex;
@@ -575,7 +600,6 @@ body {
   gap: 8px;
 }
 
-/* Scrollbars Discretas */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -590,7 +614,6 @@ body {
   border-radius: var(--radius-pill);
 }
 
-/* Respeito Estrito a Movimento Reduzido */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

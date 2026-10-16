@@ -37,26 +37,70 @@ FORBIDDEN_BUZZWORDS = [
 ]
 
 
+class LightSourceSpec(BaseModel):
+    enabled: bool = True
+    angle_deg: int = Field(
+        default=315,
+        ge=0,
+        le=360,
+        description="Ângulo azimutal no radar 360° (0° = Frontal/Câmera, 90° = Direita, 180° = Traseira/Contraluz, 270° = Esquerda).",
+    )
+    distance_pct: int = Field(
+        default=65,
+        ge=15,
+        le=100,
+        description="Distância no radar (controla a elevação/altura da luz: próximo ao centro = luz alta/zenital; borda = luz baixa/rasante).",
+    )
+    color_label: str = Field(
+        default="Sol Dourado",
+        description="Temperatura ou cor escolhida para a fonte luminosa.",
+    )
+    intensity: int = Field(default=85, ge=10, le=100)
+
+
+class SpatialLightingRig(BaseModel):
+    key_light: LightSourceSpec = Field(default_factory=LightSourceSpec)
+    rim_light: LightSourceSpec = Field(
+        default_factory=lambda: LightSourceSpec(
+            enabled=True,
+            angle_deg=135,
+            distance_pct=78,
+            color_label="Frio Noturno",
+            intensity=60,
+        )
+    )
+    spatial_summary: str = Field(
+        default="",
+        description="Descrição legível gerada pelo radar 360° da posição espacial exata das luzes.",
+    )
+    relight_mode: bool = Field(
+        default=False,
+        description="True quando o usuário moveu os refletores no Radar 360° para reiluminar a foto atual.",
+    )
+
+
 class ProductionRequest(BaseModel):
     brief: str = Field(..., min_length=1, max_length=3000)
     lens: Optional[str] = None
     aperture: Optional[str] = None
     film: Optional[str] = None
     aspect_ratio: Optional[str] = None
-    # 1. Direção Iterativa ("Conversar com a foto atual")
+    # Recurso Central: Palco de Luz Espacial 360°
+    lighting_rig: Optional[SpatialLightingRig] = None
+    # Direção Iterativa ("Conversar com a foto atual")
     previous_prompt: Optional[str] = None
     refinement_instruction: Optional[str] = None
-    # 2. Referência Visual por Upload / Clipboard
+    # Referência Visual por Upload / Clipboard
     reference_image_base64: Optional[str] = None
     reference_mime_type: Optional[str] = "image/jpeg"
-    # 3. Modo Prova de Estúdio (Contact Sheet - 3 variações de luz)
+    # Modo Prova de Estúdio (Contact Sheet - 3 variações de luz)
     contact_sheet: bool = False
 
 
 class VariationPrompt(BaseModel):
     label: str = Field(
         ...,
-        description="Título curto em português para este estudo de luz (ex: 'Estudo I · Luz Natural', 'Estudo II · Claro-Escuro', 'Estudo III · Fim de Tarde').",
+        description="Título curto em português para este estudo de luz (ex: 'Estudo I · Palco Atual', 'Estudo II · Contraluz 180°', 'Estudo III · Luz Lateral 90°').",
     )
     prompt: str = Field(
         ...,
@@ -83,11 +127,11 @@ class DirectorOutput(BaseModel):
     )
     camera_optics: str = Field(
         ...,
-        description="Explicação fluida, natural e envolvente em português brasileiro contando como a luz, o enquadramento e o clima foram pensados para dar vida à ideia do usuário.",
+        description="Explicação fluida, natural e envolvente em português brasileiro contando como as coordenadas do Palco de Luz 360° e o enquadramento foram aplicados na cena.",
     )
     final_prompt: str = Field(
         ...,
-        description="Prompt fotográfico descritivo denso em inglês para síntese de imagem, focado em física da luz, óptica real, composição e textura, sem jargões artificiais de IA.",
+        description="Prompt fotográfico descritivo denso em inglês para síntese de imagem, respeitando rigorosamente a direção física dos ângulos de luz definidos no Palco 360°.",
     )
     variations: List[VariationPrompt] = Field(
         default_factory=list,
@@ -100,11 +144,11 @@ class QAOutput(BaseModel):
         ...,
         ge=0.0,
         le=10.0,
-        description="Nota de 0.0 a 10.0 avaliando a qualidade fotográfica da imagem.",
+        description="Nota de 0.0 a 10.0 avaliando a qualidade fotográfica e a fidelidade espacial da luz.",
     )
     lighting: str = Field(
         ...,
-        description="Avaliação em linguagem natural (português brasileiro) sobre a iluminação, atmosfera e sombras da foto gerada.",
+        description="Avaliação em linguagem natural (português brasileiro) sobre a precisão da direção da luz posicionada no Palco 360° e as sombras geradas.",
     )
     lens_coherence: str = Field(
         ...,
@@ -116,38 +160,44 @@ class QAOutput(BaseModel):
     )
     improvement_suggestion: str = Field(
         default="",
-        description="Sugestão curta e prática em linguagem natural (português brasileiro) que o usuário pode aplicar com 1 clique para refinar ainda mais a foto (ex: 'Adicionar contraluz dourada suave para destacar a silhueta').",
+        description="Sugestão curta e prática em linguagem natural (português brasileiro) que o usuário pode aplicar com 1 clique para refinar ainda mais a foto.",
     )
 
 
 DIRECTOR_SYSTEM_PROMPT = """Você é o Diretor de Fotografia Sênior do estúdio LUMEN: AI PHOTOGRAPHY STUDIO.
-O usuário conversa com você em LINGUAGEM NATURAL, sem precisar usar termos técnicos de câmera.
-Sua missão é interpretar o desejo humano do usuário (e eventual foto de referência ou pedido de ajuste contínuo), decidir automaticamente o melhor conjunto óptico e transformar a ideia em uma fotografia memorável.
+O diferencial central do LUMEN é o PALCO DE LUZ ESPACIAL 360°: o usuário posiciona visualmente os refletores/Sol ao redor do sujeito usando um radar interativo de 360 graus.
+
+SUA MISSÃO PRINCIPAL:
+Traduzir com precisão absoluta a GEOMETRIA ESPACIAL DA LUZ definida pelo usuário no Radar 360° somada à descrição em linguagem natural:
+- Convenção de ângulos do Radar 360° (vistos da câmera olhando para o sujeito):
+  - 0° / 360° = Luz Frontal direta (a partir da posição da câmera, iluminando o rosto/frente sem sombras laterais duras).
+  - 30° a 60° = Luz a 45° pela DIREITA da câmera (Rembrandt lighting on the right side of frame, casting soft shadow toward the left side).
+  - 75° a 110° = Luz Lateral 90° pela DIREITA (split side lighting from the right edge of the frame, illuminating the right half while the left half falls into deep dramatic shadow).
+  - 120° a 160° = Contraluz Diagonal Traseira pela DIREITA (three-quarter back rim light from behind the right shoulder, glowing hair/shoulder edge).
+  - 165° a 195° = Contraluz Pura 180° por TRÁS do sujeito (direct backlight from behind the subject toward the camera, silhouette rim halo, atmospheric flare).
+  - 200° a 240° = Contraluz Diagonal Traseira pela ESQUERDA (three-quarter back rim light from behind the left shoulder).
+  - 250° a 290° = Luz Lateral 90° pela ESQUERDA (split side lighting from the left edge of the frame, illuminating the left half while the right half falls into deep shadow).
+  - 300° a 335° = Luz a 45° pela ESQUERDA da câmera (classic Rembrandt key light from camera-left, casting shadow toward the right side).
 
 REGRAS ESTRITAS E INEGOCIÁVEIS:
-1. Interprete a descrição em linguagem natural e decida automaticamente:
-   - `lens`: "24mm" (cenas amplas, arquitetura, paisagens), "35mm" (cenas cotidianas, narrativas, meio-corpo), "50mm" (perspectiva humana natural), ou "85mm" (retratos próximos, rostos, detalhes intimistas).
-   - `aperture`: "f/1.4" (quando o usuário pede fundo desfocado, retrato intimista ou destaque no sujeito), "f/2.8" (profundidade moderada), ou "f/8" (quando todo o cenário precisa estar nítido).
-   - `film`: "Kodak Portra 400" (luz natural, pele humana, tons quentes, nostalgia, sol), "CineStill 800T" (noite, chuva, neon, bares, luzes artificiais de cinema), ou "Neutro" (estúdio moderno, produto, cores puras).
-   - `aspect_ratio`: "16:9" (se pedir horizontal, paisagem, tela larga ou cinema), "1:1" (se pedir quadrado), "9:16" (se pedir tela vertical inteira/celular), ou "4:5" (padrão ideal para retratos e fotografia editorial).
-2. Se o usuário enviou uma FOTO DE REFERÊNCIA, analise a direção da luz, a temperatura de cor, as sombras, a atmosfera e a composição da imagem enviada e transfira essa mesma linguagem luminosa para a cena pedida.
-3. Se o usuário enviou um PEDIDO DE AJUSTE (`refinement_instruction`) sobre um `previous_prompt`, mantenha a essência do sujeito e do cenário anterior e modifique cirurgicamente apenas o que foi pedido no ajuste.
-4. Se o modo PROVA DE ESTÚDIO (`contact_sheet=True`) estiver ativo, preencha a lista `variations` com exatamente 3 interpretações luminosas distintas da mesma cena:
-   - Estudo I · Luz Natural & Orgânica (o mesmo que `final_prompt`)
-   - Estudo II · Claro-Escuro Dramático (contraste cinematográfico, sombras profundas, luz direcional intensa)
-   - Estudo III · Atmosfera Analógica Quente (contraluz dourada, halation suave, clima intimista)
-5. No campo `camera_optics`, escreva em PORTUGUÊS BRASILEIRO de forma natural, clara e envolvente, explicando como você traduziu a ideia do usuário em luz, atmosfera e enquadramento.
-6. PROIBIDO usar palavras vazias de IA em `final_prompt` ou `variations`, tais como: "8k", "4k", "photorealistic", "ultra-detailed", "hyperrealistic", "masterpiece", "unreal engine", "trending on artstation", "octane render", "best quality"."""
+1. O `final_prompt` (em INGLÊS) DEVE descrever de forma explícita e enfática de qual lado do quadro (camera-left, camera-right, directly from behind, top-down zenithal, or low horizon angle) vêm a Luz Principal (`key_light`) e a Contraluz (`rim_light`), suas cores/temperaturas e para qual lado as sombras são projetadas.
+2. Se `relight_mode=True` (Reiluminação de foto pronta): mantenha a composição, o sujeito, as roupas e o cenário idênticos ao `previous_prompt`, alterando APENAS a direção física das luzes, sombras e temperatura luminosa para refletir a nova posição do Radar 360°!
+3. Decida automaticamente a melhor óptica para a cena:
+   - `lens`: "24mm", "35mm", "50mm", ou "85mm".
+   - `aperture`: "f/1.4", "f/2.8", ou "f/8".
+   - `film`: "Kodak Portra 400", "CineStill 800T", ou "Neutro".
+   - `aspect_ratio`: "16:9", "1:1", "4:5", ou "9:16".
+4. PROIBIDO usar palavras vazias de IA como "8k", "4k", "photorealistic", "ultra-detailed", "hyperrealistic", "masterpiece", "unreal engine", "trending on artstation"."""
 
 
-QA_SYSTEM_PROMPT = """Você é o Curador e Auditor Visual do LUMEN: AI PHOTOGRAPHY STUDIO.
-Analise a fotografia gerada em relação ao que o usuário pediu em linguagem natural.
+QA_SYSTEM_PROMPT = """Você é o Curador e Auditor Óptico do LUMEN: AI PHOTOGRAPHY STUDIO.
+Analise a fotografia gerada verificando especialmente se a DIREÇÃO ESPACIAL DA LUZ (definida pelo usuário no Palco de Luz 360°) foi respeitada nas sombras e reflexos da imagem.
 
 Escreva em PORTUGUÊS BRASILEIRO com linguagem clara, natural e acessível:
-1. `lighting`: como a luz e o clima se comportam na imagem (sombras, brilho, atmosfera).
+1. `lighting`: avalie se a direção da luz principal, contraluz e sombras na imagem correspondem ao ângulo espacial pedido no Palco 360°.
 2. `lens_coherence`: como ficou o enquadramento, a perspectiva e o desfoque de fundo.
 3. `notes`: percepção geral sobre texturas, naturalidade e expressão da cena.
-4. `improvement_suggestion`: uma frase curta de comando em linguagem natural (ex: "Deixar a iluminação mais quente e aproximar o enquadramento no rosto") que o usuário possa clicar para evoluir a foto em uma próxima tomada.
+4. `improvement_suggestion`: uma sugestão prática em linguagem natural para testar na próxima tomada ou reiluminação.
 5. `score`: nota de 0.0 a 10.0."""
 
 
@@ -158,6 +208,47 @@ def sanitize_prompt(prompt: str) -> str:
     cleaned = re.sub(r"\s{2,}", " ", cleaned)
     cleaned = re.sub(r",\s*,", ",", cleaned)
     return cleaned.strip(" ,")
+
+
+def describe_light_vector_en(light: LightSourceSpec, role: str) -> str:
+    if not light.enabled:
+        return f"No {role} (single source lighting with deep negative fill on shadows)."
+
+    angle = light.angle_deg % 360
+    if angle <= 25 or angle >= 335:
+        dir_en = "directly from the front (camera axis frontal light)"
+    elif 25 < angle <= 68:
+        dir_en = "from 45-degrees camera-right (illuminating the right side of the subject, casting shadows to the left)"
+    elif 68 < angle <= 112:
+        dir_en = "from 90-degrees hard side camera-right (dramatic split lighting from the right edge, left side in shadow)"
+    elif 112 < angle <= 158:
+        dir_en = "from 135-degrees back-right behind the subject's right shoulder (diagonal rim light)"
+    elif 158 < angle <= 202:
+        dir_en = "from 180-degrees directly behind the subject (pure rear backlight silhouette and glowing rim halo)"
+    elif 202 < angle <= 248:
+        dir_en = "from 225-degrees back-left behind the subject's left shoulder (diagonal rim light)"
+    elif 248 < angle <= 292:
+        dir_en = "from 270-degrees hard side camera-left (dramatic split lighting from the left edge, right side in shadow)"
+    else:
+        dir_en = "from 315-degrees (45-degrees camera-left Rembrandt angle, illuminating the left side of the subject and casting shadows to the right)"
+
+    if light.distance_pct < 38:
+        elev_en = "high overhead zenithal elevation"
+    elif light.distance_pct < 72:
+        elev_en = "classic 45-degree studio elevation"
+    else:
+        elev_en = "low horizon grazing elevation"
+
+    color_map = {
+        "Luz do Dia": "pure neutral 5600K daylight",
+        "Sol Dourado": "warm 3500K golden hour sunlight",
+        "Tungstênio Âmbar": "warm 2700K amber tungsten glow",
+        "Frio Noturno": "cool 8000K cinematic moonlight blue",
+        "Rosa Crepúsculo": "soft warm magenta-rose twilight",
+    }
+    color_en = color_map.get(light.color_label, light.color_label)
+
+    return f"{role} ({light.intensity}% intensity, {color_en}) positioned {dir_en} at {elev_en}."
 
 
 def embed_exif_and_crop(
@@ -210,11 +301,9 @@ def embed_exif_and_crop(
         cropped = img.crop((left, top, right, bottom))
 
         exif = cropped.getexif()
-        # Tags EXIF padrão TIFF/EXIF:
-        # 0x010F = Make, 0x0110 = Model, 0x0131 = Software, 0x010E = ImageDescription, 0x013B = Artist
         exif[0x010F] = "LUMEN"
-        exif[0x0110] = "LUMEN AI Photography Studio"
-        exif[0x0131] = "LUMEN Optical Engine v2.0"
+        exif[0x0110] = "LUMEN 360 Spatial Light Studio"
+        exif[0x0131] = "LUMEN Optical Engine v3.0"
         exif[0x013B] = "LUMEN Studio"
         if metadata_info:
             desc = (
@@ -256,7 +345,6 @@ async def run_director_agent(
 ) -> DirectorOutput:
     contents_list: List[Any] = []
 
-    # 2. Se houver imagem de referência enviada pelo usuário, adiciona como Part multimodal
     if params.reference_image_base64:
         try:
             raw_ref = params.reference_image_base64
@@ -272,22 +360,35 @@ async def run_director_agent(
 
     prompt_parts = [f"Pedido do usuário em linguagem natural:\n\"{params.brief.strip()}\""]
 
-    if params.previous_prompt and params.refinement_instruction:
+    # Geometria do Palco de Luz Espacial 360°
+    rig = params.lighting_rig or SpatialLightingRig()
+    key_en = describe_light_vector_en(rig.key_light, "PRIMARY KEY LIGHT")
+    rim_en = describe_light_vector_en(rig.rim_light, "SECONDARY RIM/FILL LIGHT")
+
+    prompt_parts.append(
+        f"\nCOORDENADAS EXATAS DO PALCO DE LUZ ESPACIAL 360° (OBRIGATÓRIO RESPEITAR NA IMAGEM):\n"
+        f"- Resumo em português da posição no radar: {rig.spatial_summary or 'Luz principal a 45° pela esquerda'}\n"
+        f"- {key_en}\n"
+        f"- {rim_en}\n"
+        f"- Modo Reiluminação de Foto Pronta (`relight_mode`): {rig.relight_mode}"
+    )
+
+    if params.previous_prompt and (params.refinement_instruction or rig.relight_mode):
         prompt_parts.append(
-            f"\nDIREÇÃO ITERATIVA (AJUSTE SOBRE A FOTO ATUAL):\n"
-            f"- Prompt fotográfico da tomada anterior: \"{params.previous_prompt}\"\n"
-            f"- Ajuste solicitado pelo usuário agora: \"{params.refinement_instruction.strip()}\"\n"
-            f"Mantenha a consistência da cena anterior e aplique o ajuste solicitado."
+            f"\nDIREÇÃO ITERATIVA / REILUMINAÇÃO SOBRE A CENA ATUAL:\n"
+            f"- Prompt da tomada anterior: \"{params.previous_prompt}\"\n"
+            f"- Instrução adicional: \"{params.refinement_instruction or 'Reiluminar a mesma cena exatamente com o novo ângulo do Palco de Luz 360°.'}\"\n"
+            f"Mantenha o mesmo sujeito, roupas e enquadramento da cena anterior, mas recalcule toda a incidência de luz e sombras para o novo ângulo do Radar 360°!"
         )
 
     if params.reference_image_base64:
         prompt_parts.append(
-            "\nIMAGEM DE REFERÊNCIA ANEXADA: Extraia a atmosfera de iluminação, paleta de cores, contraste e composição da imagem enviada e aplique-as na cena descrita pelo usuário."
+            "\nIMAGEM DE REFERÊNCIA ANEXADA: Extraia a composição e atmosfera da imagem enviada combinando com o ângulo do Palco de Luz 360°."
         )
 
     if params.contact_sheet:
         prompt_parts.append(
-            "\nMODO PROVA DE ESTÚDIO ATIVO (`contact_sheet=True`): Gere também 3 variações distintas de iluminação no campo `variations`."
+            "\nMODO PROVA DE ESTÚDIO ATIVO (`contact_sheet=True`): Gere também 3 variações distintas de ângulo luminoso no campo `variations`."
         )
 
     contents_list.append("\n".join(prompt_parts))
@@ -296,7 +397,7 @@ async def run_director_agent(
         system_instruction=DIRECTOR_SYSTEM_PROMPT,
         response_mime_type="application/json",
         response_schema=DirectorOutput,
-        temperature=0.45,
+        temperature=0.4,
     )
 
     models_to_try = ["gemini-2.5-flash", "gemini-2.0-flash"]
@@ -351,7 +452,7 @@ async def _synthesize_fallback_photograph(
     w, h = dim_map.get(requested_ratio, (1024, 1280))
     seed = random.randint(1000, 999999) + seed_offset
     encoded_prompt = urllib.parse.quote(
-        f"Fine art editorial photography, {final_prompt}, authentic optical lens, natural lighting, no text, no watermark"
+        f"Fine art editorial photography, {final_prompt}, authentic optical lens, precise directional lighting, no text, no watermark"
     )
     url = (
         f"https://image.pollinations.ai/prompt/{encoded_prompt}"
@@ -386,7 +487,6 @@ async def run_imaging_agent(
 
     api_key = os.getenv("GOOGLE_API_KEY", "").strip()
 
-    # 1. Tentativa via SDK google-genai (Vertex AI Express ou padrão)
     clients_to_try = []
     if api_key.startswith("AQ."):
         try:
@@ -428,7 +528,6 @@ async def run_imaging_agent(
         except Exception as exc:
             logger.info("Imagen 3 SDK indisponível para esta chave, tentando alternativa: %s", exc)
 
-    # 2. Tentativa via Gemini Image Generation (generate_content multimodal)
     for fallback_model in ["gemini-2.5-flash-image", "gemini-3.1-flash-image"]:
         try:
             img_resp = await client.aio.models.generate_content(
@@ -458,7 +557,6 @@ async def run_imaging_agent(
         except Exception as exc:
             logger.info("Modelo %s indisponível na cota atual: %s", fallback_model, exc)
 
-    # 3. Síntese fotográfica contínua com EXIF e corte Pillow
     return await _synthesize_fallback_photograph(
         final_prompt, requested_ratio, metadata_info, seed_offset
     )
@@ -469,13 +567,15 @@ async def run_qa_agent(
     image_bytes: bytes,
     brief: str,
     direction: DirectorOutput,
+    spatial_summary: str = "",
 ) -> QAOutput:
     image_part = types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg")
     prompt_text = (
         f"Pedido original do usuário: {brief.strip()}\n"
+        f"Geometria do Palco de Luz 360° solicitada: {spatial_summary}\n"
         f"Configuração óptica decidida pela direção: {direction.lens} · {direction.aperture} · {direction.film} · {direction.aspect_ratio}\n"
         f"Intenção da direção: {direction.camera_optics}\n\n"
-        "Realize a avaliação visual da fotografia gerada em linguagem clara e natural, incluindo uma sugestão prática de refinamento (`improvement_suggestion`)."
+        "Realize a avaliação visual da fotografia gerada em linguagem clara e natural, verificando a direção da luz e incluindo uma sugestão prática (`improvement_suggestion`)."
     )
 
     config = types.GenerateContentConfig(
@@ -518,16 +618,21 @@ async def execute_production_stream(
 ) -> AsyncGenerator[str, None]:
     try:
         client = get_genai_client()
+        rig = params.lighting_rig or SpatialLightingRig()
 
-        # Etapa 1: Diretor de Fotografia & Prompt Crafter
+        # Etapa 1: Diretor de Fotografia & Geometria Espacial 360°
         yield format_ndjson(
             {
                 "event": "step",
                 "step": "direction",
                 "message": (
-                    "Ajustando direção fotográfica da cena"
-                    if params.refinement_instruction
-                    else "Preparando direção fotográfica"
+                    "Recalculando geometria de luz 360° na cena"
+                    if rig.relight_mode
+                    else (
+                        "Ajustando direção fotográfica da cena"
+                        if params.refinement_instruction
+                        else "Mapeando Palco de Luz 360° e direção óptica"
+                    )
                 ),
             }
         )
@@ -541,7 +646,7 @@ async def execute_production_stream(
             "aspect_ratio": direction.aspect_ratio,
         }
 
-        # Etapa 2: Motor Gráfico (Tomada única ou Prova de Estúdio com 3 variações)
+        # Etapa 2: Motor Gráfico
         yield format_ndjson(
             {
                 "event": "step",
@@ -549,7 +654,11 @@ async def execute_production_stream(
                 "message": (
                     "Revelando 3 estudos de luz (Prova de Estúdio)"
                     if params.contact_sheet
-                    else "Gerando imagem"
+                    else (
+                        "Reiluminando fotografia no novo ângulo 360°"
+                        if rig.relight_mode
+                        else "Gerando imagem"
+                    )
                 ),
                 "direction": {
                     "camera_optics": direction.camera_optics,
@@ -569,16 +678,16 @@ async def execute_production_stream(
             if len(var_list) < 3:
                 var_list = [
                     VariationPrompt(
-                        label="Estudo I · Luz Natural",
+                        label="Estudo I · Ângulo do Radar 360°",
                         prompt=direction.final_prompt,
                     ),
                     VariationPrompt(
-                        label="Estudo II · Claro-Escuro Dramático",
-                        prompt=f"{direction.final_prompt}, dramatic chiaroscuro lighting, deep sculptural shadows, high contrast",
+                        label="Estudo II · Contraluz Dramática 180°",
+                        prompt=f"{direction.final_prompt}, dramatic 180-degree rear backlight silhouette rim halo, deep shadows toward camera",
                     ),
                     VariationPrompt(
-                        label="Estudo III · Atmosfera Dourada",
-                        prompt=f"{direction.final_prompt}, warm golden hour backlight, subtle film halation, intimate mood",
+                        label="Estudo III · Luz Lateral 90° (Split)",
+                        prompt=f"{direction.final_prompt}, hard 90-degree side split lighting, half face in warm key light, half in deep shadow",
                     ),
                 ]
 
@@ -607,12 +716,12 @@ async def execute_production_stream(
                 client, direction.final_prompt, direction.aspect_ratio, metadata_info
             )
 
-        # Etapa 3: Auditor de QA Visual Multimodal + Loop de Auto-Correção
+        # Etapa 3: Auditor de QA Visual Multimodal
         yield format_ndjson(
             {
                 "event": "step",
                 "step": "qa",
-                "message": "Analisando resultado",
+                "message": "Analisando coerência espacial da luz",
             }
         )
 
@@ -620,10 +729,13 @@ async def execute_production_stream(
         auto_corrected = False
         try:
             qa_result = await run_qa_agent(
-                client, image_bytes, params.brief, direction
+                client,
+                image_bytes,
+                params.brief,
+                direction,
+                rig.spatial_summary,
             )
 
-            # 6. Loop de Qualidade Automático: se a nota ficar abaixo de 6.8, refina automaticamente 1 vez
             if (
                 qa_result.score < 6.8
                 and qa_result.improvement_suggestion
@@ -649,7 +761,11 @@ async def execute_production_stream(
                 direction.final_prompt = refined_prompt
                 auto_corrected = True
                 qa_result = await run_qa_agent(
-                    client, image_bytes, params.brief, direction
+                    client,
+                    image_bytes,
+                    params.brief,
+                    direction,
+                    rig.spatial_summary,
                 )
 
             qa_payload = {
@@ -687,12 +803,9 @@ async def execute_production_stream(
                     "qa": qa_payload,
                     "qa_available": qa_available,
                     "contact_sheet": contact_sheet_items,
+                    "lighting_rig": rig.model_dump(),
                     "params": {
-                        "brief": (
-                            f"{params.brief.strip()} ({params.refinement_instruction.strip()})"
-                            if params.refinement_instruction
-                            else params.brief.strip()
-                        ),
+                        "brief": params.brief.strip(),
                         "lens": direction.lens,
                         "aperture": direction.aperture,
                         "film": direction.film,

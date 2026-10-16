@@ -1,7 +1,7 @@
 /**
  * LUMEN: AI PHOTOGRAPHY STUDIO
- * Controlador Principal: Linguagem Natural, Direção Iterativa, Foto de Inspiração,
- * Prova de Estúdio (3 Luzes), Laboratório Darkroom em Tempo Real e Pôster Editorial Fine Art.
+ * Controlador Principal com PALCO DE LUZ ESPACIAL 360° (Radar Interativo 60fps +
+ * Esfera 3D Sombreada em Tempo Real + Reiluminação Direcional na Foto Pronta).
  * Segurança XSS: Todas as inserções dinâmicas usam exclusivamente textContent.
  */
 
@@ -19,6 +19,29 @@
     drawerBlobUrls: [],
     currentProduction: null,
     toastTimer: null,
+    // Estado do Palco de Luz Espacial 360°
+    lightingRig: {
+      key_light: {
+        enabled: true,
+        angle_deg: 315, // 45° pela esquerda (Rembrandt)
+        distance_pct: 65,
+        color_label: 'Sol Dourado',
+        color_hex: '#FFD166',
+        intensity: 88,
+      },
+      rim_light: {
+        enabled: true,
+        angle_deg: 135, // Contraluz traseira direita
+        distance_pct: 78,
+        color_label: 'Frio Noturno',
+        color_hex: '#74B9FF',
+        intensity: 62,
+      },
+      spatial_summary:
+        'Luz principal Sol Dourado a 45° pela esquerda (Rembrandt) + Contraluz Frio Noturno traseira à direita',
+      draggingNode: null, // 'key' | 'rim' | null
+      liveRelightPreviewActive: false,
+    },
     darkroom: {
       exposure: 0,
       contrast: 0,
@@ -29,7 +52,6 @@
     },
   };
 
-  // Referências DOM
   const els = {
     statusDot: document.getElementById('system-status-dot'),
     statusText: document.getElementById('system-status-text'),
@@ -43,6 +65,11 @@
     clearConfirmBox: document.getElementById('clear-confirm-box'),
     confirmClearYes: document.getElementById('confirm-clear-yes'),
     confirmClearNo: document.getElementById('confirm-clear-no'),
+
+    lightStageCanvas: document.getElementById('light-stage-canvas'),
+    spatialReadout: document.getElementById('spatial-light-readout'),
+    toggleRimBtn: document.getElementById('toggle-rim-light-btn'),
+    relightCurrentBtn: document.getElementById('relight-current-photo-btn'),
 
     form: document.getElementById('production-form'),
     briefInput: document.getElementById('brief-input'),
@@ -127,9 +154,6 @@
     }
   }
 
-  /**
-   * Checagem real de saúde do backend (GET /health)
-   */
   async function checkSystemHealth() {
     try {
       const response = await fetch('/health', { cache: 'no-store' });
@@ -152,7 +176,458 @@
   }
 
   /**
-   * 1 & 2. Helpers de Linguagem Natural, Foto de Inspiração e Modo Prova de Estúdio
+   * ============================================================================
+   * PALCO DE LUZ ESPACIAL 360° (RADAR INTERATIVO + ESFERA 3D EM TEMPO REAL)
+   * ============================================================================
+   * Convenção de ângulo no radar:
+   * 0° = Frente (embaixo, onde está a câmera)
+   * 90° = Direita
+   * 180° = Trás / Contraluz (no topo)
+   * 270° = Esquerda
+   */
+  function polarToCanvas(angleDeg, distancePct, cx, cy, maxR) {
+    // 0° fica na parte inferior (Math.PI / 2 no círculo trigonométrico padrão),
+    // 90° à direita (0 rad), 180° no topo (-Math.PI/2), 270° à esquerda (Math.PI)
+    const rad = ((90 - angleDeg) * Math.PI) / 180;
+    const r = (distancePct / 100) * maxR;
+    return {
+      x: cx + r * Math.cos(rad),
+      y: cy + r * Math.sin(rad),
+    };
+  }
+
+  function canvasToPolar(x, y, cx, cy, maxR) {
+    const dx = x - cx;
+    const dy = y - cy;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const distancePct = Math.min(96, Math.max(22, Math.round((dist / maxR) * 100)));
+
+    const stdDeg = (Math.atan2(dy, dx) * 180) / Math.PI;
+    // Converter de padrão (0=Dir, 90=Baixo, -90=Topo) para nosso radar (0=Baixo/Frente, 90=Dir, 180=Topo/Trás, 270=Esq)
+    let angleDeg = Math.round((90 - stdDeg + 360) % 360);
+    return { angleDeg, distancePct };
+  }
+
+  function describeAnglePt(angleDeg, distancePct) {
+    const a = ((angleDeg % 360) + 360) % 360;
+    let dir = 'frontal';
+    if (a <= 22 || a >= 338) dir = 'frontal (0°)';
+    else if (a <= 68) dir = 'a 45° pela direita';
+    else if (a <= 112) dir = 'lateral 90° pela direita (Split)';
+    else if (a <= 158) dir = 'diagonal traseira direita';
+    else if (a <= 202) dir = 'contraluz 180° por trás';
+    else if (a <= 248) dir = 'diagonal traseira esquerda';
+    else if (a <= 292) dir = 'lateral 90° pela esquerda (Split)';
+    else dir = 'a 45° pela esquerda (Rembrandt)';
+
+    const elev =
+      distancePct < 40 ? 'alta/zenital' : distancePct < 74 ? 'altura média' : 'baixa/rasante';
+    return `${dir}, ${elev}`;
+  }
+
+  function updateSpatialSummary() {
+    const k = state.lightingRig.key_light;
+    const r = state.lightingRig.rim_light;
+    const keyDesc = `Luz principal (${k.color_label}) ${describeAnglePt(k.angle_deg, k.distance_pct)}`;
+    const rimDesc = r.enabled
+      ? ` + Contraluz ${describeAnglePt(r.angle_deg, r.distance_pct)}`
+      : ' (sem 2ª luz)';
+
+    const summary = keyDesc + rimDesc;
+    state.lightingRig.spatial_summary = summary;
+    els.spatialReadout.textContent = summary;
+  }
+
+  function hexToRgb(hex) {
+    const clean = hex.replace('#', '');
+    const num = parseInt(clean, 16);
+    return {
+      r: (num >> 16) & 255,
+      g: (num >> 8) & 255,
+      b: num & 255,
+    };
+  }
+
+  function drawLightStageRadar() {
+    const canvas = els.lightStageCanvas;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width;
+    const h = canvas.height;
+    const cx = w / 2;
+    const cy = h / 2;
+    const maxR = w * 0.41;
+
+    ctx.clearRect(0, 0, w, h);
+
+    // Fundo circular do palco
+    const bgGrad = ctx.createRadialGradient(cx, cy, 10, cx, cy, maxR * 1.15);
+    bgGrad.addColorStop(0, '#1C1F1A');
+    bgGrad.addColorStop(1, '#121311');
+    ctx.fillStyle = bgGrad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, maxR * 1.12, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Anéis de elevação (Zenital, 45°, Horizonte)
+    ctx.strokeStyle = '#2B2E27';
+    ctx.lineWidth = 1.2;
+    [0.38, 0.7, 1.0].forEach((ratio) => {
+      ctx.beginPath();
+      ctx.arc(cx, cy, maxR * ratio, 0, Math.PI * 2);
+      ctx.stroke();
+    });
+
+    // Eixos cruzados
+    ctx.beginPath();
+    ctx.moveTo(cx - maxR, cy);
+    ctx.lineTo(cx + maxR, cy);
+    ctx.moveTo(cx, cy - maxR);
+    ctx.lineTo(cx, cy + maxR);
+    ctx.stroke();
+
+    // Rótulos cardeais do estúdio
+    ctx.fillStyle = '#85877F';
+    ctx.font = '600 16px "JetBrains Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('CONTRALUZ 180°', cx, cy - maxR - 12);
+    ctx.fillText('CÂMERA 0°', cx, cy + maxR + 24);
+    ctx.fillText('ESQ', cx - maxR - 20, cy + 5);
+    ctx.fillText('DIR', cx + maxR + 20, cy + 5);
+
+    const k = state.lightingRig.key_light;
+    const r = state.lightingRig.rim_light;
+    const keyPos = polarToCanvas(k.angle_deg, k.distance_pct, cx, cy, maxR);
+    const rimPos = polarToCanvas(r.angle_deg, r.distance_pct, cx, cy, maxR);
+
+    // Cone luminoso da Contraluz (2ª Luz)
+    if (r.enabled) {
+      const rimRgb = hexToRgb(r.color_hex || '#74B9FF');
+      const rimCone = ctx.createRadialGradient(rimPos.x, rimPos.y, 4, cx, cy, maxR * 0.85);
+      rimCone.addColorStop(0, `rgba(${rimRgb.r}, ${rimRgb.g}, ${rimRgb.b}, 0.35)`);
+      rimCone.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = rimCone;
+      ctx.beginPath();
+      ctx.arc(cx, cy, maxR, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Cone luminoso da Luz Principal (Sol / Key Light)
+    const keyRgb = hexToRgb(k.color_hex || '#FFD166');
+    const keyCone = ctx.createRadialGradient(keyPos.x, keyPos.y, 6, cx, cy, maxR * 0.95);
+    keyCone.addColorStop(0, `rgba(${keyRgb.r}, ${keyRgb.g}, ${keyRgb.b}, 0.48)`);
+    keyCone.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = keyCone;
+    ctx.beginPath();
+    ctx.arc(cx, cy, maxR, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Sombra projetada pelo sujeito na direção oposta à Luz Principal
+    const shadowDx = cx - keyPos.x;
+    const shadowDy = cy - keyPos.y;
+    const shadowLen = Math.sqrt(shadowDx * shadowDx + shadowDy * shadowDy) || 1;
+    const sNormX = shadowDx / shadowLen;
+    const sNormY = shadowDy / shadowLen;
+    const sphereR = 46;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+    ctx.beginPath();
+    ctx.ellipse(
+      cx + sNormX * 34,
+      cy + sNormY * 34,
+      sphereR * 0.92,
+      sphereR * 0.68,
+      Math.atan2(sNormY, sNormX),
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+    ctx.restore();
+
+    // ESFERA 3D CENTRAL (Sujeito sombreado em tempo real pela Luz Principal + Contraluz)
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, sphereR, 0, Math.PI * 2);
+    ctx.clip();
+
+    // Base escura da esfera (lado da sombra)
+    ctx.fillStyle = '#181A16';
+    ctx.fillRect(cx - sphereR, cy - sphereR, sphereR * 2, sphereR * 2);
+
+    // Iluminação difusa + especular da Luz Principal na esfera
+    const lightOffsetX = ((keyPos.x - cx) / maxR) * (sphereR * 0.78);
+    const lightOffsetY = ((keyPos.y - cy) / maxR) * (sphereR * 0.78);
+    const sphereGrad = ctx.createRadialGradient(
+      cx + lightOffsetX,
+      cy + lightOffsetY,
+      sphereR * 0.08,
+      cx,
+      cy,
+      sphereR * 1.25
+    );
+    sphereGrad.addColorStop(0, '#FFFDF7');
+    sphereGrad.addColorStop(0.28, k.color_hex || '#FFD166');
+    sphereGrad.addColorStop(0.72, '#2B2E26');
+    sphereGrad.addColorStop(1, '#101110');
+    ctx.fillStyle = sphereGrad;
+    ctx.fillRect(cx - sphereR, cy - sphereR, sphereR * 2, sphereR * 2);
+
+    // Brilho de recorte da Contraluz (Rim Light) na borda da esfera
+    if (r.enabled) {
+      const rimOffsetX = ((rimPos.x - cx) / maxR) * (sphereR * 0.95);
+      const rimOffsetY = ((rimPos.y - cy) / maxR) * (sphereR * 0.95);
+      const rimRgb = hexToRgb(r.color_hex || '#74B9FF');
+      const rimSphereGrad = ctx.createRadialGradient(
+        cx + rimOffsetX,
+        cy + rimOffsetY,
+        sphereR * 0.05,
+        cx + rimOffsetX * 0.4,
+        cy + rimOffsetY * 0.4,
+        sphereR * 0.95
+      );
+      rimSphereGrad.addColorStop(0, `rgba(${rimRgb.r}, ${rimRgb.g}, ${rimRgb.b}, 0.85)`);
+      rimSphereGrad.addColorStop(0.55, `rgba(${rimRgb.r}, ${rimRgb.g}, ${rimRgb.b}, 0.15)`);
+      rimSphereGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = rimSphereGrad;
+      ctx.fillRect(cx - sphereR, cy - sphereR, sphereR * 2, sphereR * 2);
+    }
+
+    ctx.restore();
+
+    // Contorno sutil da esfera central
+    ctx.strokeStyle = '#45493F';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, sphereR, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Linha tracejada e Handle da Contraluz (2ª Luz)
+    if (r.enabled) {
+      ctx.save();
+      ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = r.color_hex || '#74B9FF';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(rimPos.x, rimPos.y);
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.fillStyle = r.color_hex || '#74B9FF';
+      ctx.strokeStyle = '#101110';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(rimPos.x, rimPos.y, 13, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#101110';
+      ctx.font = '700 13px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('2', rimPos.x, rimPos.y + 4.5);
+    }
+
+    // Linha contínua e Handle da Luz Principal (1ª Luz - Key Light)
+    ctx.strokeStyle = k.color_hex || '#FFD166';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(keyPos.x, keyPos.y);
+    ctx.stroke();
+
+    ctx.fillStyle = k.color_hex || '#FFD166';
+    ctx.strokeStyle = '#D8FF63';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(keyPos.x, keyPos.y, 17, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#171A12';
+    ctx.font = '700 14px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('SOL', keyPos.x, keyPos.y + 5);
+  }
+
+  function setupLightStageRadarEvents() {
+    const canvas = els.lightStageCanvas;
+    if (!canvas) return;
+
+    function getCanvasMousePos(evt) {
+      const rect = canvas.getBoundingClientRect();
+      const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
+      const clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
+      return {
+        x: ((clientX - rect.left) / rect.width) * canvas.width,
+        y: ((clientY - rect.top) / rect.height) * canvas.height,
+      };
+    }
+
+    function onPointerDown(evt) {
+      if (state.isGenerating) return;
+      const pos = getCanvasMousePos(evt);
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+      const maxR = canvas.width * 0.41;
+
+      const k = state.lightingRig.key_light;
+      const r = state.lightingRig.rim_light;
+      const keyPos = polarToCanvas(k.angle_deg, k.distance_pct, cx, cy, maxR);
+      const rimPos = polarToCanvas(r.angle_deg, r.distance_pct, cx, cy, maxR);
+
+      const distKey = Math.hypot(pos.x - keyPos.x, pos.y - keyPos.y);
+      const distRim = r.enabled ? Math.hypot(pos.x - rimPos.x, pos.y - rimPos.y) : 9999;
+
+      if (distRim < 28 && distRim < distKey) {
+        state.lightingRig.draggingNode = 'rim';
+      } else {
+        state.lightingRig.draggingNode = 'key';
+        const polar = canvasToPolar(pos.x, pos.y, cx, cy, maxR);
+        k.angle_deg = polar.angleDeg;
+        k.distance_pct = polar.distancePct;
+      }
+
+      updateSpatialSummary();
+      drawLightStageRadar();
+      onLightingRigChangedByUser();
+    }
+
+    function onPointerMove(evt) {
+      if (!state.lightingRig.draggingNode || state.isGenerating) return;
+      evt.preventDefault();
+      const pos = getCanvasMousePos(evt);
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+      const maxR = canvas.width * 0.41;
+      const polar = canvasToPolar(pos.x, pos.y, cx, cy, maxR);
+
+      if (state.lightingRig.draggingNode === 'key') {
+        state.lightingRig.key_light.angle_deg = polar.angleDeg;
+        state.lightingRig.key_light.distance_pct = polar.distancePct;
+      } else if (state.lightingRig.draggingNode === 'rim') {
+        state.lightingRig.rim_light.angle_deg = polar.angleDeg;
+        state.lightingRig.rim_light.distance_pct = polar.distancePct;
+      }
+
+      updateSpatialSummary();
+      drawLightStageRadar();
+      onLightingRigChangedByUser();
+    }
+
+    function onPointerUp() {
+      state.lightingRig.draggingNode = null;
+    }
+
+    canvas.addEventListener('mousedown', onPointerDown);
+    window.addEventListener('mousemove', onPointerMove);
+    window.addEventListener('mouseup', onPointerUp);
+
+    canvas.addEventListener('touchstart', onPointerDown, { passive: false });
+    window.addEventListener('touchmove', onPointerMove, { passive: false });
+    window.addEventListener('touchend', onPointerUp);
+
+    // Swatches de cor da Luz Principal
+    document.querySelectorAll('[data-light-color]').forEach((swatch) => {
+      swatch.addEventListener('click', () => {
+        if (state.isGenerating) return;
+        document.querySelectorAll('[data-light-color]').forEach((s) => {
+          s.classList.remove('is-selected');
+        });
+        swatch.classList.add('is-selected');
+        state.lightingRig.key_light.color_label =
+          swatch.getAttribute('data-light-color') || 'Sol Dourado';
+        state.lightingRig.key_light.color_hex =
+          swatch.getAttribute('data-light-hex') || '#FFD166';
+        updateSpatialSummary();
+        drawLightStageRadar();
+        onLightingRigChangedByUser();
+      });
+    });
+
+    // Botão ON/OFF da 2ª Luz (Contraluz)
+    els.toggleRimBtn.addEventListener('click', () => {
+      if (state.isGenerating) return;
+      const next = !state.lightingRig.rim_light.enabled;
+      state.lightingRig.rim_light.enabled = next;
+      els.toggleRimBtn.setAttribute('aria-pressed', next ? 'true' : 'false');
+      els.toggleRimBtn.textContent = `2ª Luz (Contraluz): ${next ? 'ON' : 'OFF'}`;
+      updateSpatialSummary();
+      drawLightStageRadar();
+      onLightingRigChangedByUser();
+    });
+
+    // Presets Espaciais Clássicos
+    document.querySelectorAll('[data-stage-preset]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if (state.isGenerating) return;
+        const preset = btn.getAttribute('data-stage-preset');
+        const k = state.lightingRig.key_light;
+        const r = state.lightingRig.rim_light;
+
+        if (preset === 'rembrandt') {
+          k.angle_deg = 315;
+          k.distance_pct = 64;
+          r.enabled = true;
+          r.angle_deg = 135;
+          r.distance_pct = 78;
+        } else if (preset === 'split') {
+          k.angle_deg = 270;
+          k.distance_pct = 82;
+          r.enabled = false;
+        } else if (preset === 'silhouette') {
+          k.angle_deg = 180;
+          k.distance_pct = 85;
+          r.enabled = true;
+          r.angle_deg = 0;
+          r.distance_pct = 60;
+        } else if (preset === 'cinema') {
+          k.angle_deg = 305;
+          k.distance_pct = 68;
+          k.color_label = 'Tungstênio Âmbar';
+          k.color_hex = '#FF9F43';
+          r.enabled = true;
+          r.angle_deg = 125;
+          r.distance_pct = 75;
+          r.color_label = 'Frio Noturno';
+          r.color_hex = '#74B9FF';
+        }
+
+        els.toggleRimBtn.setAttribute('aria-pressed', r.enabled ? 'true' : 'false');
+        els.toggleRimBtn.textContent = `2ª Luz (Contraluz): ${r.enabled ? 'ON' : 'OFF'}`;
+        updateSpatialSummary();
+        drawLightStageRadar();
+        onLightingRigChangedByUser();
+      });
+    });
+
+    // Botão Reiluminar Foto Atual com o novo ângulo 360°
+    els.relightCurrentBtn.addEventListener('click', () => {
+      if (!state.currentProduction || state.isGenerating) return;
+      executeGenerationRequest(
+        `Reiluminar a mesma cena mudando fisicamente a posição da luz para: ${state.lightingRig.spatial_summary}`,
+        true
+      );
+    });
+
+    updateSpatialSummary();
+    drawLightStageRadar();
+  }
+
+  /**
+   * Quando já existe uma foto aberta no palco e o usuário arrasta a luz no Radar 360°:
+   * 1) Exibe o botão "Reiluminar foto atual com este novo ângulo 360°"
+   * 2) Aplica um preview direcional 2.5D instantâneo na foto mostrando de onde a nova luz vem!
+   */
+  function onLightingRigChangedByUser() {
+    if (!state.currentProduction || !state.activeRawBlobUrl) return;
+    els.relightCurrentBtn.classList.remove('hidden');
+    state.lightingRig.liveRelightPreviewActive = true;
+    applyDarkroomToCurrentImage();
+  }
+
+  /**
+   * Helpers de Linguagem Natural, Foto de Referência e Modo Prova de Estúdio
    */
   function setupNaturalLanguageHelpers() {
     document.querySelectorAll('[data-phrase]').forEach((chip) => {
@@ -182,7 +657,6 @@
       });
     });
 
-    // Toggle Modo Prova de Estúdio (3 Estudos de Luz)
     els.contactSheetToggle.addEventListener('click', () => {
       if (state.isGenerating) return;
       state.contactSheetMode = !state.contactSheetMode;
@@ -192,7 +666,6 @@
       );
     });
 
-    // Upload / Drag & Drop / Paste de Foto de Inspiração
     els.refDropzone.addEventListener('click', (e) => {
       if (e.target.closest('#remove-reference-btn')) return;
       els.refFileInput.click();
@@ -228,7 +701,6 @@
       }
     });
 
-    // Colar imagem do Clipboard (Ctrl+V)
     document.addEventListener('paste', (e) => {
       if (state.isGenerating) return;
       const items = e.clipboardData?.items;
@@ -238,7 +710,7 @@
           const file = item.getAsFile();
           if (file) {
             loadReferenceFile(file);
-            showToast('Foto de inspiração colada.');
+            showToast('Foto de referência colada.');
             break;
           }
         }
@@ -275,9 +747,6 @@
     els.refEmptyPrompt.classList.remove('hidden');
   }
 
-  /**
-   * Gerenciamento de URLs de Blob
-   */
   function revokeCurrentImageUrl() {
     if (state.currentImageBlobUrl) {
       URL.revokeObjectURL(state.currentImageBlobUrl);
@@ -324,6 +793,9 @@
     els.stateSuccess.classList.toggle('hidden', viewName !== 'success');
     els.darkroomPanel.classList.toggle('hidden', viewName !== 'success');
     els.technicalPanels.classList.toggle('hidden', viewName !== 'success');
+    if (viewName !== 'success') {
+      els.relightCurrentBtn.classList.add('hidden');
+    }
   }
 
   function updateStepProgress(activeStep, liveMessage) {
@@ -357,15 +829,18 @@
     els.briefInput.disabled = isSubmitting;
     els.applyRefinementBtn.disabled = isSubmitting;
     els.refinementInput.disabled = isSubmitting;
+    els.relightCurrentBtn.disabled = isSubmitting;
     els.submitBtnLabel.textContent = isSubmitting ? 'Produzindo…' : 'Disparar produção';
 
-    document.querySelectorAll('[data-phrase], [data-example], [data-quick-refine]').forEach((btn) => {
-      btn.disabled = isSubmitting;
-    });
+    document.querySelectorAll('[data-phrase], [data-example], [data-quick-refine], [data-stage-preset]').forEach(
+      (btn) => {
+        btn.disabled = isSubmitting;
+      }
+    );
   }
 
   /**
-   * 4. LABORATÓRIO DARKROOM EM TEMPO REAL (Canvas 2D Processing)
+   * LABORATÓRIO DARKROOM + PREVIEW DIRECIONAL 2.5D DO PALCO DE LUZ 360°
    */
   function resetDarkroomControls() {
     state.darkroom = {
@@ -391,7 +866,7 @@
   async function applyDarkroomToCurrentImage() {
     if (!state.activeRawBlobUrl) return;
     const d = state.darkroom;
-    const isUnchanged =
+    const isDarkroomUnchanged =
       d.exposure === 0 &&
       d.contrast === 0 &&
       d.warmth === 0 &&
@@ -399,7 +874,7 @@
       d.grain === 0 &&
       !d.bw;
 
-    if (isUnchanged) {
+    if (isDarkroomUnchanged && !state.lightingRig.liveRelightPreviewActive) {
       els.resultImage.src = state.activeRawBlobUrl;
       return;
     }
@@ -417,7 +892,6 @@
     canvas.height = img.naturalHeight || img.height;
     const ctx = canvas.getContext('2d');
 
-    // Filtro base de exposição e contraste
     const brightness = 100 + d.exposure;
     const contrast = 100 + d.contrast;
     const grayscale = d.bw ? 100 : 0;
@@ -425,7 +899,6 @@
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
     ctx.filter = 'none';
 
-    // Manipulação pixel a pixel para Temperatura (Quente/Fria) e Grão 35mm
     if (d.warmth !== 0 || d.grain > 0) {
       const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const data = imgData.data;
@@ -457,7 +930,26 @@
       ctx.putImageData(imgData, 0, 0);
     }
 
-    // Vinheta óptica suave
+    // Preview direcional 2.5D ao arrastar os refletores do Radar 360° sobre uma foto aberta
+    if (state.lightingRig.liveRelightPreviewActive) {
+      const k = state.lightingRig.key_light;
+      const rad = ((90 - k.angle_deg) * Math.PI) / 180;
+      const lx = canvas.width * (0.5 + 0.48 * Math.cos(rad));
+      const ly = canvas.height * (0.5 - 0.42 * Math.sin(rad));
+      const maxDim = Math.max(canvas.width, canvas.height);
+
+      const rgb = hexToRgb(k.color_hex || '#FFD166');
+      ctx.save();
+      ctx.globalCompositeOperation = 'soft-light';
+      const relightGrad = ctx.createRadialGradient(lx, ly, maxDim * 0.05, canvas.width / 2, canvas.height / 2, maxDim * 0.95);
+      relightGrad.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.62)`);
+      relightGrad.addColorStop(0.55, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.14)`);
+      relightGrad.addColorStop(1, 'rgba(0, 0, 0, 0.52)');
+      ctx.fillStyle = relightGrad;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.restore();
+    }
+
     if (d.vignette > 0) {
       const cx = canvas.width / 2;
       const cy = canvas.height / 2;
@@ -535,16 +1027,16 @@
 
     els.resetDarkroomBtn.addEventListener('click', () => {
       resetDarkroomControls();
+      state.lightingRig.liveRelightPreviewActive = false;
       applyDarkroomToCurrentImage();
     });
   }
 
-  /**
-   * Renderiza uma produção concluída (com suporte a Prova de Estúdio e Sugestão de Curadoria)
-   */
   function renderProductionResult(record) {
     revokeCurrentImageUrl();
     resetDarkroomControls();
+    state.lightingRig.liveRelightPreviewActive = false;
+    els.relightCurrentBtn.classList.add('hidden');
 
     const imageBlob =
       record.imageBlob instanceof Blob
@@ -567,7 +1059,6 @@
     els.downloadEditorialBtn.disabled = false;
     els.refinementInput.value = '';
 
-    // 3. Renderizar Tira de Prova de Estúdio (Contact Sheet) se houver variações
     els.contactSheetStrip.textContent = '';
     const variations = Array.isArray(record.contact_sheet) ? record.contact_sheet : [];
     if (variations.length > 1) {
@@ -613,11 +1104,9 @@
       els.contactSheetStrip.classList.add('hidden');
     }
 
-    // Direção Fotográfica
     els.directionOpticsText.textContent = record.direction?.camera_optics || '';
     els.directionPromptText.textContent = record.direction?.final_prompt || '';
 
-    // Auditoria Visual Resiliente + Sugestão Ativa
     if (record.qa_available && record.qa && typeof record.qa.score === 'number') {
       els.qaScorePill.textContent = `${record.qa.score.toFixed(1)} / 10`;
       els.qaLightingText.textContent = record.qa.lighting || '';
@@ -644,9 +1133,9 @@
   }
 
   /**
-   * Disparo da Produção (Nova ou Refinamento Iterativo sobre a foto atual)
+   * Disparo da Produção com as Coordenadas do Palco de Luz Espacial 360°
    */
-  async function executeGenerationRequest(refinementInstruction = null) {
+  async function executeGenerationRequest(refinementInstruction = null, relightMode = false) {
     if (state.isGenerating) return;
 
     const briefText = els.briefInput.value.trim() || state.currentProduction?.params?.brief || '';
@@ -660,18 +1149,38 @@
     setSubmittingState(true);
     updateStepProgress(
       'direction',
-      refinementInstruction
-        ? 'Ajustando direção fotográfica da cena'
-        : 'Preparando direção fotográfica'
+      relightMode
+        ? 'Recalculando geometria de luz 360° na cena'
+        : refinementInstruction
+          ? 'Ajustando direção fotográfica da cena'
+          : 'Mapeando Palco de Luz 360° e direção óptica'
     );
     setWorkspaceView('generating');
 
     const payload = {
       brief: briefText,
       contact_sheet: state.contactSheetMode,
+      lighting_rig: {
+        key_light: {
+          enabled: true,
+          angle_deg: state.lightingRig.key_light.angle_deg,
+          distance_pct: state.lightingRig.key_light.distance_pct,
+          color_label: state.lightingRig.key_light.color_label,
+          intensity: state.lightingRig.key_light.intensity,
+        },
+        rim_light: {
+          enabled: state.lightingRig.rim_light.enabled,
+          angle_deg: state.lightingRig.rim_light.angle_deg,
+          distance_pct: state.lightingRig.rim_light.distance_pct,
+          color_label: state.lightingRig.rim_light.color_label,
+          intensity: state.lightingRig.rim_light.intensity,
+        },
+        spatial_summary: state.lightingRig.spatial_summary,
+        relight_mode: Boolean(relightMode),
+      },
     };
 
-    if (refinementInstruction && state.currentProduction) {
+    if ((refinementInstruction || relightMode) && state.currentProduction) {
       payload.previous_prompt = state.currentProduction.direction?.final_prompt || '';
       payload.refinement_instruction = refinementInstruction;
     }
@@ -757,12 +1266,9 @@
 
   function handleProductionSubmit(event) {
     if (event) event.preventDefault();
-    executeGenerationRequest(null);
+    executeGenerationRequest(null, false);
   }
 
-  /**
-   * 5. Exportação Editorial Fine Art (Pôster de Galeria com Moldura e Metadados)
-   */
   async function handleDownloadEditorialPoster() {
     const activeUrl = els.resultImage.src || state.currentImageBlobUrl;
     if (!activeUrl || !state.currentProduction) return;
@@ -786,19 +1292,15 @@
     canvas.height = h + borderTop + borderBottom;
     const ctx = canvas.getContext('2d');
 
-    // Moldura Fine Art em Marfim Editorial (#F3F1EA)
     ctx.fillStyle = '#F3F1EA';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Linha de filete interna sutil
     ctx.strokeStyle = '#D9D7CE';
     ctx.lineWidth = 1;
     ctx.strokeRect(borderSide - 4, borderTop - 4, w + 8, h + 8);
 
-    // Fotografia central
     ctx.drawImage(img, borderSide, borderTop, w, h);
 
-    // Tipografia Editorial no rodapé da moldura
     const p = state.currentProduction.params || {};
     const footerY = borderTop + h + Math.round(borderBottom * 0.46);
 
@@ -808,9 +1310,12 @@
 
     ctx.fillStyle = '#6E7068';
     ctx.font = `500 ${Math.round(borderSide * 0.16)}px Inter, sans-serif`;
-    ctx.fillText('AI PHOTOGRAPHY STUDIO · FINE ART EDITION', borderSide, footerY + Math.round(borderSide * 0.28));
+    ctx.fillText(
+      `360° SPATIAL LIGHT STUDIO · ${state.lightingRig.key_light.angle_deg}° KEY`,
+      borderSide,
+      footerY + Math.round(borderSide * 0.28)
+    );
 
-    // Metadados ópticos alinhados à direita
     const metaStr = `${p.lens || '35mm'}  ·  ${p.aperture || 'f/1.4'}  ·  ${p.film || 'Kodak Portra 400'}`;
     ctx.textAlign = 'right';
     ctx.fillStyle = '#292D25';
@@ -836,9 +1341,6 @@
     );
   }
 
-  /**
-   * Download padronizado: lumen-studio-[timestamp].jpg
-   */
   function handleDownloadImage() {
     const activeUrl = els.resultImage.src || state.currentImageBlobUrl;
     if (!activeUrl || !state.currentProduction) return;
@@ -855,6 +1357,7 @@
     if (state.isGenerating) return;
     revokeCurrentImageUrl();
     state.currentProduction = null;
+    state.lightingRig.liveRelightPreviewActive = false;
     els.resultImage.removeAttribute('src');
     els.downloadBtn.disabled = true;
     els.downloadEditorialBtn.disabled = true;
@@ -910,9 +1413,6 @@
     });
   }
 
-  /**
-   * Histórico Local (IndexedDB) e Drawer Lateral
-   */
   async function refreshHistoryBadge() {
     try {
       const items = await window.lumenDB.getAllProductions();
@@ -1041,9 +1541,6 @@
     closeHistoryDrawer();
   }
 
-  /**
-   * Eventos Globais, Refinamento Iterativo e Sugestão da Curadoria
-   */
   function bindEvents() {
     els.form.addEventListener('submit', handleProductionSubmit);
 
@@ -1060,21 +1557,20 @@
       }
     });
 
-    // 1. Direção Iterativa ("Conversar com a foto atual")
     els.applyRefinementBtn.addEventListener('click', () => {
       const instruction = els.refinementInput.value.trim();
       if (!instruction) {
         els.refinementInput.focus();
         return;
       }
-      executeGenerationRequest(instruction);
+      executeGenerationRequest(instruction, false);
     });
 
     els.refinementInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
         const instruction = els.refinementInput.value.trim();
-        if (instruction) executeGenerationRequest(instruction);
+        if (instruction) executeGenerationRequest(instruction, false);
       }
     });
 
@@ -1083,17 +1579,16 @@
         const refineText = chip.getAttribute('data-quick-refine') || '';
         if (refineText) {
           els.refinementInput.value = refineText;
-          executeGenerationRequest(refineText);
+          executeGenerationRequest(refineText, false);
         }
       });
     });
 
-    // 6. Aplicar sugestão da curadoria com 1 clique
     els.applyQaSuggestionBtn.addEventListener('click', () => {
       const suggestion = els.qaSuggestionText.textContent || '';
       if (suggestion) {
         els.refinementInput.value = suggestion;
-        executeGenerationRequest(suggestion);
+        executeGenerationRequest(suggestion, false);
       }
     });
 
@@ -1130,6 +1625,7 @@
 
   async function init() {
     initIcons();
+    setupLightStageRadarEvents();
     setupNaturalLanguageHelpers();
     setupDarkroomEvents();
     setupAccordions();

@@ -106,32 +106,137 @@
     </div>
   </header>
 
-  <!-- LAYOUT PRINCIPAL: SIDEBAR EM LINGUAGEM NATURAL + WORKSPACE -->
+  <!-- LAYOUT PRINCIPAL: PALCO DE LUZ ESPACIAL 360° + WORKSPACE -->
   <div class="lumen-layout">
 
-    <!-- SIDEBAR DE DIREÇÃO EM LINGUAGEM NATURAL -->
-    <aside class="lumen-sidebar" aria-label="Direção criativa em linguagem natural">
-      <form id="production-form" class="flex flex-col gap-4 h-full justify-between" novalidate>
+    <!-- SIDEBAR: PALCO DE LUZ 360° + LINGUAGEM NATURAL -->
+    <aside class="lumen-sidebar" aria-label="Palco de Luz Espacial 360 graus e direção criativa">
+      <form id="production-form" class="flex flex-col gap-3.5 h-full justify-between" novalidate>
 
-        <div class="flex flex-col gap-4">
-          <!-- 1. Briefing em Linguagem Natural -->
-          <div class="flex flex-col gap-1.5">
+        <div class="flex flex-col gap-3.5">
+
+          <!-- CORAÇÃO DO LUMEN: PALCO DE LUZ ESPACIAL 360° -->
+          <div class="lumen-light-stage-box">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold uppercase tracking-wider text-accent flex items-center gap-1.5">
+                <i data-lucide="sun" class="w-3.5 h-3.5" aria-hidden="true"></i>
+                <span>Palco de Luz Espacial 360°</span>
+              </span>
+              <span class="text-[11px] text-text-muted">Arraste os refletores</span>
+            </div>
+
+            <!-- Canvas Interativo 60fps com Esfera 3D Sombreada em Tempo Real -->
+            <div class="lumen-radar-canvas-wrap">
+              <canvas
+                id="light-stage-canvas"
+                width="460"
+                height="460"
+                aria-label="Radar interativo de iluminação 360 graus. Arraste a Luz Principal ou a Contraluz ao redor do sujeito."
+              ></canvas>
+            </div>
+
+            <!-- Leitura Viva da Posição Física das Luzes -->
+            <div
+              id="spatial-light-readout"
+              class="px-2.5 py-1.5 rounded bg-surface border border-border text-[11px] text-ivory leading-snug text-center font-medium"
+            >
+              Luz principal a 45° pela esquerda (Rembrandt) + Contraluz fria à direita
+            </div>
+
+            <!-- Controles de Cor da Luz Principal e Contraluz -->
+            <div class="flex items-center justify-between gap-2 pt-1 border-t border-border">
+              <div class="flex items-center gap-1.5">
+                <span class="text-[11px] text-text-secondary mr-0.5">Cor do Sol:</span>
+                <button
+                  type="button"
+                  class="lumen-color-swatch is-selected"
+                  style="background: #FFD166;"
+                  data-light-color="Sol Dourado"
+                  data-light-hex="#FFD166"
+                  title="Sol Dourado (Hora Dourada)"
+                  aria-label="Cor Sol Dourado"
+                ></button>
+                <button
+                  type="button"
+                  class="lumen-color-swatch"
+                  style="background: #F4F6F8;"
+                  data-light-color="Luz do Dia"
+                  data-light-hex="#F4F6F8"
+                  title="Luz do Dia Neutra (5600K)"
+                  aria-label="Cor Luz do Dia"
+                ></button>
+                <button
+                  type="button"
+                  class="lumen-color-swatch"
+                  style="background: #FF9F43;"
+                  data-light-color="Tungstênio Âmbar"
+                  data-light-hex="#FF9F43"
+                  title="Tungstênio Âmbar Intimista"
+                  aria-label="Cor Tungstênio Âmbar"
+                ></button>
+                <button
+                  type="button"
+                  class="lumen-color-swatch"
+                  style="background: #74B9FF;"
+                  data-light-color="Frio Noturno"
+                  data-light-hex="#74B9FF"
+                  title="Azul Frio Noturno Cinematográfico"
+                  aria-label="Cor Frio Noturno"
+                ></button>
+                <button
+                  type="button"
+                  class="lumen-color-swatch"
+                  style="background: #FD79A8;"
+                  data-light-color="Rosa Crepúsculo"
+                  data-light-hex="#FD79A8"
+                  title="Rosa Crepúsculo"
+                  aria-label="Cor Rosa Crepúsculo"
+                ></button>
+              </div>
+
+              <button
+                type="button"
+                id="toggle-rim-light-btn"
+                class="lumen-natural-chip py-0.5 px-2 text-[11px]"
+                aria-pressed="true"
+              >
+                2ª Luz (Contraluz): ON
+              </button>
+            </div>
+
+            <!-- Presets Espaciais Clássicos (Movem as luzes no radar com 1 clique) -->
+            <div class="flex flex-wrap gap-1">
+              <button type="button" class="lumen-natural-chip" data-stage-preset="rembrandt">Rembrandt 45°</button>
+              <button type="button" class="lumen-natural-chip" data-stage-preset="split">Lateral 90° (Split)</button>
+              <button type="button" class="lumen-natural-chip" data-stage-preset="silhouette">Contraluz 180°</button>
+              <button type="button" class="lumen-natural-chip" data-stage-preset="cinema">Dupla Luz Cinema</button>
+            </div>
+
+            <!-- Botão Especial: Reiluminar Foto Atual quando já houver foto no palco -->
+            <button
+              type="button"
+              id="relight-current-photo-btn"
+              class="hidden w-full py-2 px-3 rounded-md text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer transition"
+              style="background-color: var(--color-surface-active); border: 1px solid var(--color-accent); color: var(--color-accent);"
+            >
+              <i data-lucide="sparkles" class="w-3.5 h-3.5" aria-hidden="true"></i>
+              <span>Reiluminar foto atual com este novo ângulo 360°</span>
+            </button>
+          </div>
+
+          <!-- 2. Briefing em Linguagem Natural -->
+          <div class="flex flex-col gap-1">
             <div class="flex items-center justify-between">
               <label for="brief-input" class="lumen-section-label m-0">
-                Sua direção em linguagem natural
+                Descreva a cena com suas palavras
               </label>
               <span class="text-[11px] text-text-muted font-mono">Ctrl + Enter</span>
             </div>
-            <p class="m-0 text-xs text-text-secondary leading-relaxed">
-              Conte com suas palavras o que você quer ver. O diretor interpreta sua ideia e escolhe a luz, o foco e o enquadramento automaticamente.
-            </p>
-          </div>
 
-          <div class="flex flex-col">
             <textarea
               id="brief-input"
               name="brief"
-              rows="5"
+              rows="3"
               class="lumen-textarea"
               placeholder="Descreva o sujeito, a cena, a iluminação, o clima e o que a imagem deve transmitir."
               aria-describedby="brief-validation-alert"
@@ -139,7 +244,7 @@
 
             <div
               id="brief-validation-alert"
-              class="hidden mt-2 px-3 py-2 rounded-md border text-xs font-medium flex items-center gap-2"
+              class="hidden mt-1.5 px-3 py-2 rounded-md border text-xs font-medium flex items-center gap-2"
               style="background-color: rgba(240, 198, 116, 0.08); border-color: var(--color-warning); color: var(--color-warning);"
               role="alert"
             >
@@ -148,65 +253,16 @@
             </div>
           </div>
 
-          <!-- 2. Toques Naturais Rápidos -->
-          <div class="flex flex-col gap-1.5">
-            <span class="text-xs font-medium text-text-secondary">
-              Toques rápidos em linguagem natural <span class="text-text-muted font-normal">(opcional)</span>
-            </span>
-            <div class="flex flex-wrap gap-1.5" role="group" aria-label="Sugestões em linguagem natural">
-              <button
-                type="button"
-                class="lumen-natural-chip"
-                data-phrase="com luz suave entrando pela janela"
-              >+ Luz suave de janela</button>
-
-              <button
-                type="button"
-                class="lumen-natural-chip"
-                data-phrase="com o fundo bem desfocado destacando o sujeito"
-              >+ Fundo bem desfocado</button>
-
-              <button
-                type="button"
-                class="lumen-natural-chip"
-                data-phrase="no fim de tarde com luz dourada e sombras longas"
-              >+ Luz de fim de tarde</button>
-
-              <button
-                type="button"
-                class="lumen-natural-chip"
-                data-phrase="com clima de cinema à noite e luzes quentes ao fundo"
-              >+ Clima noturno de cinema</button>
-
-              <button
-                type="button"
-                class="lumen-natural-chip"
-                data-phrase="com textura e cores quentes de fotografia analógica"
-              >+ Toque de filme analógico</button>
-
-              <button
-                type="button"
-                class="lumen-natural-chip"
-                data-phrase="em formato horizontal amplo de cinema"
-              >+ Formato horizontal</button>
-
-              <button
-                type="button"
-                class="lumen-natural-chip"
-                data-phrase="em formato vertical para retrato"
-              >+ Formato vertical</button>
-            </div>
+          <!-- Toques Rápidos em Linguagem Natural -->
+          <div class="flex flex-wrap gap-1" role="group" aria-label="Sugestões em linguagem natural">
+            <button type="button" class="lumen-natural-chip" data-phrase="com o fundo bem desfocado destacando o sujeito">+ Fundo desfocado</button>
+            <button type="button" class="lumen-natural-chip" data-phrase="com textura e cores quentes de filme analógico">+ Filme analógico</button>
+            <button type="button" class="lumen-natural-chip" data-phrase="em formato horizontal amplo de cinema">+ Horizontal (16:9)</button>
+            <button type="button" class="lumen-natural-chip" data-phrase="em formato vertical para retrato">+ Vertical (4:5)</button>
           </div>
 
-          <!-- 3. Upgrade 2: Referência Visual por Upload / Ctrl+V -->
-          <div class="flex flex-col gap-1.5 pt-2 border-t border-border">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-medium text-text-secondary">
-                Foto de inspiração de luz/clima <span class="text-text-muted font-normal">(opcional)</span>
-              </span>
-              <span class="text-[11px] text-text-muted">Arraste ou Ctrl+V</span>
-            </div>
-
+          <!-- Foto de Inspiração (Upload / Ctrl+V) -->
+          <div class="flex flex-col gap-1">
             <input
               type="file"
               id="reference-file-input"
@@ -216,32 +272,29 @@
 
             <div
               id="reference-dropzone"
-              class="lumen-ref-dropzone flex items-center justify-between gap-3"
+              class="lumen-ref-dropzone flex items-center justify-between gap-2.5"
               tabindex="0"
               role="button"
-              aria-label="Enviar foto de referência para inspirar a iluminação"
+              aria-label="Enviar foto de referência"
             >
-              <div id="reference-empty-prompt" class="flex items-center gap-2.5 text-xs text-text-secondary">
+              <div id="reference-empty-prompt" class="flex items-center gap-2 text-xs text-text-secondary">
                 <i data-lucide="image-plus" class="w-4 h-4 text-text-muted shrink-0" aria-hidden="true"></i>
-                <span>Clique, arraste ou cole uma foto para copiar a iluminação</span>
+                <span> Subir ou colar (`Ctrl+V`) foto de referência</span>
               </div>
 
-              <div id="reference-preview-container" class="hidden w-full flex items-center justify-between gap-2.5">
-                <div class="flex items-center gap-2.5 min-w-0">
+              <div id="reference-preview-container" class="hidden w-full flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2 min-w-0">
                   <img
                     id="reference-preview-img"
-                    alt="Miniatura da foto de inspiração"
-                    class="w-10 h-10 rounded object-cover border border-border shrink-0"
+                    alt="Miniatura da foto de referência"
+                    class="w-8 h-8 rounded object-cover border border-border shrink-0"
                   />
-                  <div class="flex flex-col min-w-0">
-                    <span class="text-xs font-medium text-ivory truncate">Inspiração visual ativa</span>
-                    <span class="text-[11px] text-text-muted">O diretor copiará a luz e o clima</span>
-                  </div>
+                  <span class="text-xs font-medium text-ivory truncate">Referência visual ativa</span>
                 </div>
                 <button
                   type="button"
                   id="remove-reference-btn"
-                  class="lumen-btn-secondary p-1.5 text-xs"
+                  class="lumen-btn-secondary p-1 text-xs"
                   aria-label="Remover foto de referência"
                 >
                   <i data-lucide="trash-2" class="w-3.5 h-3.5 text-danger" aria-hidden="true"></i>
@@ -250,54 +303,29 @@
             </div>
           </div>
 
-          <!-- 4. Upgrade 3: Modo Prova de Estúdio (Contact Sheet - 3 Estudos de Luz) -->
-          <div class="pt-1">
-            <button
-              type="button"
-              id="contact-sheet-toggle"
-              class="lumen-toggle-card"
-              aria-pressed="false"
-            >
-              <div class="flex flex-col gap-0.5">
-                <span class="text-xs font-semibold text-ivory flex items-center gap-1.5">
-                  <i data-lucide="layout-grid" class="w-3.5 h-3.5 text-text-secondary" aria-hidden="true"></i>
-                  <span>Modo Prova de Estúdio (3 estudos de luz)</span>
-                </span>
-                <span class="text-[11px] text-text-muted">
-                  Revela 3 variações de iluminação da mesma cena para você escolher
-                </span>
-              </div>
-              <span class="lumen-toggle-indicator" aria-hidden="true"></span>
-            </button>
-          </div>
-
-          <!-- 5. Ideias Prontas com 1 Clique -->
-          <div class="flex flex-col gap-1.5 pt-2 border-t border-border">
-            <span class="text-xs font-medium text-text-secondary">
-              Ou experimente uma ideia pronta:
-            </span>
-            <div class="flex flex-col gap-1.5">
-              <button
-                type="button"
-                class="lumen-inspiration-btn"
-                data-example="Retrato intimista de uma mulher tomando café perto de uma janela chuvosa pela manhã, expressão serena, fundo bem desfocado e tons quentes acolhedores."
-              >
-                “Retrato intimista perto de uma janela chuvosa pela manhã…”
-              </button>
-
-              <button
-                type="button"
-                class="lumen-inspiration-btn"
-                data-example="Um saxofonista tocando sozinho sob a luz quente de um poste em uma rua de paralelepípedos molhada à noite, atmosfera de cinema clássico em formato horizontal."
-              >
-                “Saxofonista sob a luz de um poste em rua molhada à noite…”
-              </button>
+          <!-- Toggle Modo Prova de Estúdio (3 Estudos de Luz) -->
+          <button
+            type="button"
+            id="contact-sheet-toggle"
+            class="lumen-toggle-card"
+            aria-pressed="false"
+          >
+            <div class="flex flex-col">
+              <span class="text-xs font-semibold text-ivory flex items-center gap-1.5">
+                <i data-lucide="layout-grid" class="w-3.5 h-3.5 text-text-secondary" aria-hidden="true"></i>
+                <span>Prova de Estúdio (3 ângulos de luz)</span>
+              </span>
+              <span class="text-[11px] text-text-muted">
+                Compara seu ângulo do radar com Contraluz 180° e Lateral 90°
+              </span>
             </div>
-          </div>
+            <span class="lumen-toggle-indicator" aria-hidden="true"></span>
+          </button>
+
         </div>
 
         <!-- Botão Primário Proprietário -->
-        <div class="pt-3 border-t border-border">
+        <div class="pt-2 border-t border-border">
           <button
             type="submit"
             id="submit-production-btn"
@@ -339,26 +367,42 @@
       <section class="lumen-stage" aria-label="Visualizador principal de fotografia">
 
         <!-- ESTADO 1: VAZIO (INICIAL) -->
-        <div id="state-empty" class="max-w-md text-center flex flex-col items-center gap-3 px-4">
+        <div id="state-empty" class="max-w-lg text-center flex flex-col items-center gap-3 px-4">
           <div class="w-11 h-11 rounded-full bg-surface border border-border flex items-center justify-center mb-1">
-            <i data-lucide="camera" class="w-5 h-5 text-text-secondary" aria-hidden="true"></i>
+            <i data-lucide="sun" class="w-5 h-5 text-accent" aria-hidden="true"></i>
           </div>
           <h1 class="text-xl md:text-2xl font-semibold tracking-tight text-ivory m-0">
             A imagem começa com uma intenção.
           </h1>
           <p class="text-sm text-text-secondary m-0 leading-relaxed">
-            Descreva a cena com suas palavras e deixe o estúdio cuidar da direção fotográfica.
+            Posicione os refletores no <strong>Palco de Luz 360°</strong> à esquerda, descreva a cena com suas palavras ou experimente um exemplo rápido:
           </p>
+          <div class="flex flex-wrap justify-center gap-2 mt-2">
+            <button
+              type="button"
+              class="lumen-natural-chip py-1.5 px-3 text-xs"
+              data-example="Retrato intimista de uma mulher tomando café perto de uma janela chuvosa, olhar calmo e atmosfera cinematográfica."
+            >
+              “Retrato perto de janela chuvosa…”
+            </button>
+            <button
+              type="button"
+              class="lumen-natural-chip py-1.5 px-3 text-xs"
+              data-example="Um músico tocando saxofone em um beco parisiense molhado à noite, fumaça sutil no ar e clima noir."
+            >
+              “Saxofonista à noite em beco molhado…”
+            </button>
+          </div>
         </div>
 
         <!-- ESTADO 2: GERANDO (ETAPAS REAIS VIA STREAMING NDJSON) -->
         <div id="state-generating" class="hidden w-full max-w-md flex flex-col gap-3" aria-live="polite">
           <div class="text-center mb-2">
             <p class="text-xs font-mono uppercase tracking-widest text-text-muted m-0 mb-1">
-              Estúdio em ação
+              Palco de Luz 360° em ação
             </p>
             <h2 id="generating-live-heading" class="text-base font-medium text-ivory m-0">
-              Preparando direção fotográfica
+              Mapeando Palco de Luz 360° e direção óptica
             </h2>
           </div>
 
@@ -366,7 +410,7 @@
             <div id="step-item-direction" class="lumen-step-item">
               <span class="lumen-step-dot" aria-hidden="true"></span>
               <div class="flex flex-col">
-                <span class="text-xs font-semibold">1. Interpretando sua ideia e definindo a luz</span>
+                <span class="text-xs font-semibold">1. Calculando incidência 360° e direção óptica</span>
                 <span class="text-xs text-text-muted">Preparando direção fotográfica</span>
               </div>
             </div>
@@ -374,7 +418,7 @@
             <div id="step-item-imaging" class="lumen-step-item">
               <span class="lumen-step-dot" aria-hidden="true"></span>
               <div class="flex flex-col">
-                <span class="text-xs font-semibold">2. Revelando a fotografia</span>
+                <span class="text-xs font-semibold">2. Revelando a fotografia com luz física</span>
                 <span class="text-xs text-text-muted">Gerando imagem</span>
               </div>
             </div>
@@ -382,7 +426,7 @@
             <div id="step-item-qa" class="lumen-step-item">
               <span class="lumen-step-dot" aria-hidden="true"></span>
               <div class="flex flex-col">
-                <span class="text-xs font-semibold">3. Curadoria visual da imagem</span>
+                <span class="text-xs font-semibold">3. Curadoria de luz e sombras</span>
                 <span class="text-xs text-text-muted">Analisando resultado</span>
               </div>
             </div>
@@ -399,32 +443,27 @@
             />
           </div>
 
-          <!-- Upgrade 3: Tira de Prova de Estúdio (3 Estudos de Luz) -->
+          <!-- Tira de Prova de Estúdio (3 Estudos de Luz) -->
           <div id="contact-sheet-strip" class="hidden lumen-contact-strip" aria-label="Estudos de iluminação"></div>
 
-          <!-- Upgrade 1: Conversar com a Foto Atual (Direção Iterativa Contínua) -->
+          <!-- Conversar com a Foto Atual (Direção Iterativa Contínua) -->
           <div class="w-full bg-surface border border-border rounded-lg p-3 flex flex-col gap-2">
             <div class="flex items-center justify-between gap-2">
               <label for="refinement-input" class="text-xs font-semibold text-ivory flex items-center gap-1.5">
                 <i data-lucide="message-square-plus" class="w-3.5 h-3.5 text-accent" aria-hidden="true"></i>
-                <span>Conversar com esta foto (pedir ajuste ao diretor)</span>
+                <span>Conversar com esta foto ou girar a luz no Radar 360°</span>
               </label>
               <div class="hidden sm:flex items-center gap-1.5">
                 <button
                   type="button"
                   class="lumen-natural-chip py-0.5 px-2 text-[11px]"
-                  data-quick-refine="Deixar a iluminação mais quente e dourada"
-                >Luz mais quente</button>
+                  data-quick-refine="Aproximar mais o enquadramento no rosto e expressão"
+                >Close-up mais próximo</button>
                 <button
                   type="button"
                   class="lumen-natural-chip py-0.5 px-2 text-[11px]"
-                  data-quick-refine="Aproximar mais o enquadramento no sujeito principal"
-                >Aproximar mais</button>
-                <button
-                  type="button"
-                  class="lumen-natural-chip py-0.5 px-2 text-[11px]"
-                  data-quick-refine="Deixar o clima mais dramático com sombras intensas"
-                >Mais dramático</button>
+                  data-quick-refine="Adicionar chuva sutil e reflexos molhados no ambiente"
+                >Clima de chuva</button>
               </div>
             </div>
 
@@ -433,7 +472,7 @@
                 type="text"
                 id="refinement-input"
                 class="flex-1 bg-bg border border-border rounded-md px-3 py-2 text-xs text-ivory placeholder:text-text-muted focus:border-accent"
-                placeholder="Ex: Mantenha a cena, mas mude para fim de tarde chuvoso ou aproxime mais o rosto…"
+                placeholder="Peça qualquer mudança nesta cena (ou arraste os refletores no Radar 360° à esquerda)…"
               />
               <button
                 type="button"
@@ -446,7 +485,7 @@
             </div>
           </div>
 
-          <!-- Barra Sutil de Metadados Técnicos Decididos pelo Diretor e Ações -->
+          <!-- Barra de Metadados Técnicos e Ações -->
           <div class="w-full flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-border">
             <div class="flex items-center gap-2">
               <span class="text-xs text-text-muted">Direção escolhida:</span>
@@ -466,7 +505,6 @@
                 <span>Nova produção</span>
               </button>
 
-              <!-- Upgrade 5: Exportação Pôster Editorial Fine Art -->
               <button
                 type="button"
                 id="download-editorial-btn"
@@ -477,7 +515,6 @@
                 <span>Baixar Pôster Fine Art</span>
               </button>
 
-              <!-- Download Imagem Pura (com EXIF e Darkroom) -->
               <button
                 type="button"
                 id="download-image-btn"
@@ -494,7 +531,7 @@
 
       </section>
 
-      <!-- Upgrade 4: LABORATÓRIO DE REVELAÇÃO DIGITAL (DARKROOM EM TEMPO REAL) -->
+      <!-- LABORATÓRIO DE REVELAÇÃO DIGITAL (DARKROOM EM TEMPO REAL) -->
       <section
         id="darkroom-panel"
         class="hidden lumen-accordion"
@@ -516,7 +553,6 @@
 
         <div id="accordion-panel-darkroom" class="lumen-accordion-body">
           <div class="pt-3 flex flex-col gap-4">
-            <!-- Presets Analógicos de 1 Clique -->
             <div class="flex flex-wrap items-center justify-between gap-2">
               <div class="flex flex-wrap items-center gap-1.5">
                 <span class="text-xs text-text-muted mr-1">Acabamento rápido:</span>
@@ -532,7 +568,6 @@
               >Restaurar original</button>
             </div>
 
-            <!-- Controles Deslizantes em Linguagem Natural -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
               <div class="flex flex-col gap-1.5">
                 <div class="flex justify-between text-xs">
@@ -604,7 +639,7 @@
             <div class="pt-3 flex flex-col gap-3">
               <div>
                 <span class="block text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-1">
-                  Como sua ideia foi traduzida em imagem
+                  Como o Palco de Luz 360° e sua ideia foram combinados
                 </span>
                 <p id="direction-optics-text" class="m-0 text-sm text-text-secondary leading-relaxed"></p>
               </div>
@@ -656,12 +691,11 @@
           </button>
 
           <div id="accordion-panel-qa" class="lumen-accordion-body">
-            <!-- Conteúdo quando QA está disponível -->
             <div id="qa-content-available" class="pt-3 flex flex-col gap-3">
               <div class="grid grid-cols-1 gap-2.5">
                 <div class="p-2.5 rounded-md bg-bg border border-border">
                   <span class="block text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-1">
-                    Luz e atmosfera
+                    Luz espacial 360° e sombras
                   </span>
                   <p id="qa-lighting-text" class="m-0 text-xs text-text-secondary leading-relaxed"></p>
                 </div>
@@ -680,7 +714,6 @@
                   <p id="qa-notes-text" class="m-0 text-xs text-text-secondary leading-relaxed"></p>
                 </div>
 
-                <!-- Upgrade 6: Sugestão da Curadoria com 1 Clique -->
                 <div
                   id="qa-suggestion-box"
                   class="hidden p-3 rounded-md bg-surface-active border border-border-strong flex flex-col gap-2"
@@ -707,7 +740,6 @@
               </p>
             </div>
 
-            <!-- Conteúdo quando QA está indisponível -->
             <div id="qa-content-unavailable" class="hidden pt-3 flex flex-col gap-2">
               <div class="p-3 rounded-md bg-bg border border-border text-xs text-text-secondary">
                 Auditoria indisponível
@@ -764,13 +796,11 @@
       </div>
     </div>
 
-    <!-- Aviso explícito obrigatório -->
     <div class="px-4 py-2.5 bg-surface border-b border-border flex items-center gap-2 text-xs text-text-secondary">
       <i data-lucide="hard-drive" class="w-3.5 h-3.5 text-text-muted shrink-0" aria-hidden="true"></i>
       <span>O histórico é armazenado exclusivamente neste navegador.</span>
     </div>
 
-    <!-- Confirmação inline para limpar tudo -->
     <div
       id="clear-confirm-box"
       class="hidden px-4 py-3 bg-surface-active border-b border-border flex items-center justify-between gap-2"
@@ -790,7 +820,6 @@
       </div>
     </div>
 
-    <!-- Lista de Itens do Histórico -->
     <div id="history-list" class="p-4 flex-1 overflow-y-auto flex flex-col gap-3"></div>
   </aside>
 
