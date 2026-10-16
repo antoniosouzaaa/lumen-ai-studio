@@ -71,10 +71,10 @@
     <div class="flex items-center gap-3">
       <div class="flex items-baseline gap-2">
         <span class="lumen-brand-wordmark">LUMEN</span>
-        <span class="lumen-brand-descriptor">AI Studio</span>
+        <span class="lumen-brand-descriptor">Co-Pilot</span>
       </div>
       <span class="hidden md:inline-block h-3.5 w-px bg-border" aria-hidden="true"></span>
-      <p class="hidden md:block lumen-brand-slogan m-0">Uma imagem. Uma intenção. Uma próxima ação clara.</p>
+      <p class="hidden md:block lumen-brand-slogan m-0">Simulador 360°, Ficha Técnica de Set & Edição de Estúdio</p>
     </div>
 
     <!-- Seletor do Projeto Atual, Save Indicator & Status -->
@@ -485,6 +485,66 @@
                     <i data-lucide="bar-chart-2" class="w-3.5 h-3.5 text-accent" aria-hidden="true"></i>
                   </button>
                 </div>
+              </div>
+
+              <!-- BARRA DE AÇÕES RÁPIDAS DE ESTÚDIO (SUBSTITUI PHOTOSHOP EM EDIÇÕES RÁPIDAS) -->
+              <div class="lumen-quick-edit-bar flex flex-wrap items-center justify-between gap-2 p-1.5 rounded bg-bg/90 border border-border text-xs" role="toolbar" aria-label="Ações rápidas de estúdio">
+                
+                <!-- 1. Troca Rápida de Fundo de Estúdio (Cutout & Backdrop) -->
+                <div class="flex items-center gap-1">
+                  <span class="text-[10px] font-mono uppercase text-text-muted mr-0.5">Fundo:</span>
+                  <button type="button" class="lumen-btn-secondary px-2 py-0.5 text-[11px]" id="quick-bg-white-btn" title="Fundo Branco Puro de Catálogo Comercial (255, 255, 255)">
+                    <span class="w-2.5 h-2.5 rounded-full bg-white inline-block mr-1 border border-border"></span>
+                    <span>Branco Catálogo</span>
+                  </button>
+                  <button type="button" class="lumen-btn-secondary px-2 py-0.5 text-[11px]" id="quick-bg-grey-btn" title="Fundo Cinza Estúdio 18% Neutro">
+                    <span class="w-2.5 h-2.5 rounded-full bg-[#3A3B40] inline-block mr-1"></span>
+                    <span>Cinza 18%</span>
+                  </button>
+                  <button type="button" class="lumen-btn-secondary px-2 py-0.5 text-[11px]" id="quick-bg-black-btn" title="Fundo Preto Infinito Aveludado">
+                    <span class="w-2.5 h-2.5 rounded-full bg-[#0A0A0C] inline-block mr-1 border border-border"></span>
+                    <span>Preto Infinito</span>
+                  </button>
+                  <button type="button" class="lumen-btn-secondary px-2 py-0.5 text-[11px]" id="quick-bg-trans-btn" title="Isolar sujeito com fundo transparente (PNG sem perdas)">
+                    <i data-lucide="scissors" class="w-3 h-3 text-accent inline mr-1"></i>
+                    <span>Recorte PNG</span>
+                  </button>
+                </div>
+
+                <!-- 2. Transformação Geométrica Rápida (Photoshop Transform) -->
+                <div class="flex items-center gap-1">
+                  <span class="text-[10px] font-mono uppercase text-text-muted mr-0.5">Geometria:</span>
+                  <button type="button" class="lumen-btn-secondary p-1" id="quick-rotate-btn" title="Girar 90° no sentido horário">
+                    <i data-lucide="rotate-cw" class="w-3 h-3 text-text-secondary"></i>
+                  </button>
+                  <button type="button" class="lumen-btn-secondary p-1" id="quick-flip-h-btn" title="Espelhar horizontalmente (Flip H)">
+                    <i data-lucide="flip-horizontal" class="w-3 h-3 text-text-secondary"></i>
+                  </button>
+                  <button type="button" class="lumen-btn-secondary p-1" id="quick-flip-v-btn" title="Espelhar verticalmente (Flip V)">
+                    <i data-lucide="flip-vertical" class="w-3 h-3 text-text-secondary"></i>
+                  </button>
+                  <select id="quick-crop-select" class="bg-surface border border-border rounded px-1.5 py-0.5 text-[11px] text-ivory cursor-pointer" title="Recortar na Proporção de Estúdio">
+                    <option value="">Enquadrar Proporção</option>
+                    <option value="1:1">1:1 (Quadrado Comercial)</option>
+                    <option value="4:5">4:5 (Retrato Instagram Pro)</option>
+                    <option value="16:9">16:9 (Banner Cinema)</option>
+                    <option value="9:16">9:16 (Stories Vertical)</option>
+                    <option value="3:2">3:2 (Sensor 35mm)</option>
+                  </select>
+                </div>
+
+                <!-- 3. Ficha Técnica de Set & Aprovação com Cliente -->
+                <div class="flex items-center gap-1.5">
+                  <button type="button" class="lumen-btn-secondary px-2.5 py-0.5 text-[11px] text-accent border-accent/40 hover:border-accent font-semibold" id="open-lighting-card-btn" title="Gerar Ficha Técnica de Iluminação para Assistentes / Gaffer">
+                    <i data-lucide="clipboard-list" class="w-3 h-3 inline mr-1"></i>
+                    <span>Ficha de Set</span>
+                  </button>
+                  <button type="button" class="lumen-btn-secondary px-2.5 py-0.5 text-[11px] text-text-secondary hover:text-ivory" id="open-client-review-btn" title="Abrir Sessão de Aprovação com Cliente (Capture One Live)">
+                    <i data-lucide="share-2" class="w-3 h-3 inline mr-1 text-accent"></i>
+                    <span>Aprovação</span>
+                  </button>
+                </div>
+
               </div>
 
               <!-- Box do Histograma & Clipping (Expansível) -->
@@ -1313,6 +1373,43 @@
           <i data-lucide="download" class="w-3.5 h-3.5" aria-hidden="true"></i>
           <span id="confirm-export-label">Baixar Arquivo</span>
         </button>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- =========================================================================
+       MODAL DA FICHA TÉCNICA DE ILUMINAÇÃO (CALL SHEET / SETUP CARD)
+       ========================================================================= -->
+  <div id="lighting-card-modal" class="lumen-modal-backdrop hidden" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="lighting-card-title">
+    <div class="lumen-modal-card max-w-2xl max-h-[92vh] overflow-y-auto p-6 flex flex-col gap-4">
+      
+      <!-- Cabeçalho da Ficha Técnica -->
+      <div class="flex items-center justify-between pb-3 border-b border-border">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded bg-surface border border-accent/40 flex items-center justify-center text-accent">
+            <i data-lucide="clipboard-list" class="w-4 h-4" aria-hidden="true"></i>
+          </div>
+          <div>
+            <h2 id="lighting-card-title" class="text-base font-bold text-ivory m-0 font-editorial">Ficha Técnica de Iluminação (Set Call Sheet)</h2>
+            <span class="text-[11px] text-text-muted font-mono" id="lighting-card-subtitle">LUMEN Co-Pilot Studio Engine</span>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" id="print-lighting-card-btn" class="lumen-btn-primary px-3 py-1.5 text-xs">
+            <i data-lucide="printer" class="w-3.5 h-3.5 inline mr-1"></i>
+            <span>Imprimir / PDF</span>
+          </button>
+          <button type="button" id="close-lighting-card-btn" class="lumen-btn-secondary p-1.5" aria-label="Fechar ficha técnica">
+            <i data-lucide="x" class="w-4 h-4 text-text-secondary"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Conteúdo Dinâmico da Ficha Técnica -->
+      <div id="lighting-card-body" class="flex flex-col gap-4 text-xs">
+        <!-- Renderizado dinamicamente via JS -->
       </div>
 
     </div>

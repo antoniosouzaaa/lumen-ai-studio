@@ -3615,6 +3615,291 @@
   }
 
   // ===========================================================================
+  // ÁREA 8: FERRAMENTAS PROFISSIONAIS DE EDIÇÃO RÁPIDA (PHOTOSHOP SUITE)
+  // ===========================================================================
+
+  function getActiveImageBase64() {
+    if (state.currentProduction?.image_base64) {
+      return state.currentProduction.image_base64;
+    }
+    if (state.originalImageBase64) {
+      return state.originalImageBase64.includes(',')
+        ? state.originalImageBase64.split(',')[1]
+        : state.originalImageBase64;
+    }
+    const resultImg = document.getElementById('result-image');
+    if (resultImg && resultImg.src && resultImg.src.startsWith('data:')) {
+      return resultImg.src.split(',')[1];
+    }
+    return null;
+  }
+
+  function updateActiveImageWithNewBase64(newBase64, mimeType = 'image/jpeg', label = 'Edição Rápida') {
+    const dataUrl = newBase64.startsWith('data:') ? newBase64 : `data:${mimeType};base64,${newBase64}`;
+    const rawB64 = dataUrl.split(',')[1];
+
+    const resultImg = document.getElementById('result-image');
+    const splitAfter = document.getElementById('split-after-img');
+    const sbsAfter = document.getElementById('sbs-after-img');
+
+    if (resultImg) resultImg.src = dataUrl;
+    if (splitAfter) splitAfter.src = dataUrl;
+    if (sbsAfter) sbsAfter.src = dataUrl;
+
+    const record = {
+      job_id: `edit_${Date.now()}`,
+      version_id: `v_${Date.now()}`,
+      image_base64: rawB64,
+      mime_type: mimeType,
+      created_at: new Date().toISOString(),
+      direction: {
+        camera_optics: label,
+        final_prompt: label,
+      },
+      lighting_rig: state.lightingRig,
+      params: {
+        lens: state.camera?.lens || '85mm',
+        aperture: state.camera?.aperture || 'f/2.8',
+        film: state.camera?.film || 'Kodak Portra 400',
+        aspect_ratio: state.camera?.aspect_ratio || '4:5',
+      },
+    };
+
+    state.previousVersion = state.currentProduction;
+    state.currentProduction = record;
+    state.activeVersion = record;
+    state.versionHistory.push(record);
+    if (typeof renderVersionHistory === 'function') renderVersionHistory();
+    updateSplitView();
+  }
+
+  function setupQuickEditTools() {
+    // 1. Troca Rápida de Fundo de Estúdio (Cutout & Backdrop)
+    async function applyBackdrop(backdropType) {
+      const b64 = getActiveImageBase64();
+      if (!b64) {
+        showToast('Adicione uma foto antes de trocar o fundo de estúdio.');
+        return;
+      }
+      showToast('Processando isolamento de fundo de estúdio...');
+      try {
+        const resp = await fetch('/api/edit/backdrop', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            image_base64: b64,
+            backdrop_type: backdropType,
+            add_contact_shadow: true,
+          }),
+        });
+        if (!resp.ok) throw new Error('Falha ao processar fundo de estúdio.');
+        const data = await resp.json();
+        updateActiveImageWithNewBase64(data.image_base64, data.mime_type, `Fundo: ${backdropType}`);
+        showToast('Fundo de estúdio aplicado com sucesso!');
+      } catch (err) {
+        showToast(err.message || 'Erro ao isolar fundo.');
+      }
+    }
+
+    document.getElementById('quick-bg-white-btn')?.addEventListener('click', () => applyBackdrop('pure_white'));
+    document.getElementById('quick-bg-grey-btn')?.addEventListener('click', () => applyBackdrop('studio_grey'));
+    document.getElementById('quick-bg-black-btn')?.addEventListener('click', () => applyBackdrop('infinite_black'));
+    document.getElementById('quick-bg-trans-btn')?.addEventListener('click', () => applyBackdrop('transparent'));
+
+    // 2. Transformações Geométricas em Canvas (Rotate, Flip H, Flip V, Crop)
+    function processImageOnCanvas(callback) {
+      const img = document.getElementById('result-image') || document.getElementById('split-after-img');
+      if (!img || !img.src) {
+        showToast('Nenhuma imagem disponível para transformar.');
+        return;
+      }
+      const tempImg = new Image();
+      tempImg.crossOrigin = 'anonymous';
+      tempImg.onload = () => {
+        const c = document.createElement('canvas');
+        const ctx = c.getContext('2d');
+        callback(tempImg, c, ctx);
+        const dataUrl = c.toDataURL('image/jpeg', 0.98);
+        updateActiveImageWithNewBase64(dataUrl, 'image/jpeg', 'Transformação Geométrica');
+      };
+      tempImg.src = img.src;
+    }
+
+    // Girar 90°
+    document.getElementById('quick-rotate-btn')?.addEventListener('click', () => {
+      processImageOnCanvas((tempImg, c, ctx) => {
+        c.width = tempImg.height;
+        c.height = tempImg.width;
+        ctx.translate(c.width / 2, c.height / 2);
+        ctx.rotate((90 * Math.PI) / 180);
+        ctx.drawImage(tempImg, -tempImg.width / 2, -tempImg.height / 2);
+      });
+      showToast('Imagem rotacionada 90°.');
+    });
+
+    // Espelhar Horizontal (Flip H)
+    document.getElementById('quick-flip-h-btn')?.addEventListener('click', () => {
+      processImageOnCanvas((tempImg, c, ctx) => {
+        c.width = tempImg.width;
+        c.height = tempImg.height;
+        ctx.translate(c.width, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(tempImg, 0, 0);
+      });
+      showToast('Imagem espelhada horizontalmente.');
+    });
+
+    // Espelhar Vertical (Flip V)
+    document.getElementById('quick-flip-v-btn')?.addEventListener('click', () => {
+      processImageOnCanvas((tempImg, c, ctx) => {
+        c.width = tempImg.width;
+        c.height = tempImg.height;
+        ctx.translate(0, c.height);
+        ctx.scale(1, -1);
+        ctx.drawImage(tempImg, 0, 0);
+      });
+      showToast('Imagem espelhada verticalmente.');
+    });
+
+    // Recorte por Proporção (Crop)
+    const cropSelect = document.getElementById('quick-crop-select');
+    if (cropSelect) {
+      cropSelect.addEventListener('change', () => {
+        const val = cropSelect.value;
+        if (!val) return;
+        const [rw, rh] = val.split(':').map(Number);
+        const targetRatio = rw / rh;
+
+        processImageOnCanvas((tempImg, c, ctx) => {
+          const imgRatio = tempImg.width / tempImg.height;
+          let cropW = tempImg.width;
+          let cropH = tempImg.height;
+          let startX = 0;
+          let startY = 0;
+
+          if (imgRatio > targetRatio) {
+            cropW = tempImg.height * targetRatio;
+            startX = (tempImg.width - cropW) / 2;
+          } else {
+            cropH = tempImg.width / targetRatio;
+            startY = (tempImg.height - cropH) / 2;
+          }
+
+          c.width = cropW;
+          c.height = cropH;
+          ctx.drawImage(tempImg, startX, startY, cropW, cropH, 0, 0, cropW, cropH);
+        });
+
+        showToast(`Recorte aplicado na proporção ${val}.`);
+        cropSelect.value = '';
+      });
+    }
+
+    // 3. Ficha Técnica de Iluminação (Setup Card / Call Sheet)
+    const openCardBtn = document.getElementById('open-lighting-card-btn');
+    const cardModal = document.getElementById('lighting-card-modal');
+    const closeCardBtn = document.getElementById('close-lighting-card-btn');
+    const printCardBtn = document.getElementById('print-lighting-card-btn');
+    const cardBody = document.getElementById('lighting-card-body');
+
+    if (openCardBtn && cardModal) {
+      openCardBtn.addEventListener('click', async () => {
+        cardModal.classList.remove('hidden');
+        if (cardBody) {
+          cardBody.innerHTML = '<div class="py-8 text-center text-text-muted">Calculando ficha técnica de estúdio...</div>';
+        }
+
+        try {
+          const resp = await fetch('/api/lighting-card', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              lighting_rig: state.lightingRig,
+              lens: state.camera?.lens || '85mm',
+              aperture: state.camera?.aperture || 'f/2.8',
+              film: state.camera?.film || 'Kodak Portra 400',
+              project_title: 'Produção Comercial LUMEN Co-Pilot',
+            }),
+          });
+          if (!resp.ok) throw new Error('Falha ao gerar ficha de set.');
+          const cardData = await resp.json();
+
+          if (cardBody) {
+            cardBody.innerHTML = `
+              <!-- Cabeçalho de Câmera & Setup -->
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3 rounded-lg bg-bg border border-border font-mono text-[11px]">
+                <div><span class="text-text-muted block text-[10px]">LENTE</span><strong class="text-ivory">${cardData.camera_spec.lens}</strong></div>
+                <div><span class="text-text-muted block text-[10px]">ABERTURA</span><strong class="text-ivory">${cardData.camera_spec.aperture}</strong></div>
+                <div><span class="text-text-muted block text-[10px]">SYNC SPEED</span><strong class="text-ivory">${cardData.camera_spec.shutter_speed}</strong></div>
+                <div><span class="text-text-muted block text-[10px]">SENSIBILIDADE</span><strong class="text-ivory">${cardData.camera_spec.iso}</strong></div>
+              </div>
+
+              <!-- Tabela de Fontes de Iluminação -->
+              <div class="flex flex-col gap-2">
+                <span class="text-xs font-bold uppercase tracking-wider text-accent">Esquema das Fontes de Luz (3 Pontos)</span>
+                <div class="flex flex-col gap-2">
+                  ${cardData.lights.map(l => `
+                    <div class="p-3 rounded-lg bg-bg border border-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                      <div class="flex items-center gap-2">
+                        <span class="w-3.5 h-3.5 rounded-full border border-border shrink-0" style="background:${l.color_hex};"></span>
+                        <div class="flex flex-col">
+                          <strong class="text-ivory text-xs">${l.role}</strong>
+                          <span class="text-[11px] text-text-muted">${l.modifier}</span>
+                        </div>
+                      </div>
+                      <div class="flex items-center gap-3 font-mono text-[11px]">
+                        <span class="px-2 py-0.5 rounded bg-surface border border-border text-accent font-semibold">${l.angle_deg}°</span>
+                        <span class="px-2 py-0.5 rounded bg-surface border border-border text-ivory">${l.power_ws}</span>
+                        <span class="text-text-muted">${l.color_temp}</span>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+
+              <!-- Checklist de Equipamentos para o Set -->
+              <div class="p-3 rounded-lg bg-bg border border-border flex flex-col gap-2">
+                <span class="text-xs font-bold uppercase tracking-wider text-text-secondary">Checklist de Equipamentos (Assistente / Gaffer)</span>
+                <ul class="list-disc list-inside text-[11px] text-text-secondary space-y-1">
+                  ${cardData.equipment_checklist.map(item => `<li>${item}</li>`).join('')}
+                </ul>
+              </div>
+            `;
+          }
+        } catch (err) {
+          if (cardBody) cardBody.innerHTML = `<div class="p-4 text-danger text-center">${err.message}</div>`;
+        }
+      });
+    }
+
+    if (closeCardBtn && cardModal) {
+      closeCardBtn.addEventListener('click', () => cardModal.classList.add('hidden'));
+      cardModal.addEventListener('click', (e) => {
+        if (e.target === cardModal) cardModal.classList.add('hidden');
+      });
+    }
+
+    if (printCardBtn) {
+      printCardBtn.addEventListener('click', () => window.print());
+    }
+
+    // 4. Atalho de Aprovação de Cliente
+    const clientReviewBtn = document.getElementById('open-client-review-btn');
+    if (clientReviewBtn) {
+      clientReviewBtn.addEventListener('click', () => {
+        const drawerBackdrop = document.getElementById('drawer-backdrop');
+        const drawerPanel = document.querySelector('.lumen-drawer-panel');
+        if (drawerBackdrop && drawerPanel) {
+          drawerBackdrop.classList.add('is-open');
+          drawerPanel.classList.add('is-open');
+          document.querySelector('[data-drawer-tab="tab-review"]')?.click();
+          showToast('Sessão de aprovação aberta. Copie o link ou deixe notas na foto!');
+        }
+      });
+    }
+  }
+
+  // ===========================================================================
   // INICIALIZAÇÃO DO ESTÚDIO
   // ===========================================================================
 
@@ -3622,6 +3907,7 @@
     applyTheme(state.theme);
     setupNavigation();
     setupGuidedStudioFlow();
+    setupQuickEditTools();
     updateSaveIndicator('saved');
     updateSpatialSummaryAndRatio();
     renderLightStage();

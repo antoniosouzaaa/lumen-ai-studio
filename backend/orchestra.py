@@ -2344,6 +2344,23 @@ class WhiteBalanceRequest(BaseModel):
     sample_y_pct: float
 
 
+class StudioBackdropRequest(BaseModel):
+    image_base64: str
+    backdrop_type: Literal["transparent", "pure_white", "studio_grey", "infinite_black", "gradient", "custom_color"] = "pure_white"
+    custom_color_hex: str = "#FFFFFF"
+    add_contact_shadow: bool = True
+    feather: float = Field(default=2.0, ge=0.5, le=10.0)
+
+
+class LightingSetupCardRequest(BaseModel):
+    lighting_rig: SpatialLightingRig
+    lens: str = "85mm"
+    aperture: str = "f/2.8"
+    film: str = "Kodak Portra 400"
+    project_title: str = "Produção Comercial LUMEN Co-Pilot"
+    client_name: Optional[str] = "Cliente Comercial"
+
+
 LOOKBOOK_ANGLES: List[Dict[str, str]] = [
     {
         "id": "frontal_beauty",
@@ -2726,6 +2743,212 @@ async def run_neural_relight(
     # Fallback óptico espacial determinístico
     opt_bytes = await asyncio.to_thread(run_optical_spatial_relight, image_bytes, rig)
     return opt_bytes, "lumen-optical-spatial-engine", True
+
+
+def apply_studio_backdrop(
+    image_bytes: bytes,
+    backdrop_type: str = "pure_white",
+    custom_color_hex: str = "#FFFFFF",
+    add_contact_shadow: bool = True,
+    feather: float = 2.0,
+) -> tuple[bytes, str]:
+    """
+    Isola o sujeito principal da foto e projeta sobre um fundo de estúdio profissional
+    (Branco Puro de Catálogo 255,255,255, Cinza Neutro 18%, Preto Infinito, Transparente ou Gradiente)
+    com sombra de contato física calculada na base.
+    """
+    with Image.open(io.BytesIO(image_bytes)) as img:
+        rgba = img.convert("RGBA")
+        w, h = rgba.size
+        arr = np.array(rgba, dtype=np.float32)
+
+        # 1. Detecção adaptativa de fundo pelas 4 bordas
+        border_pixels = np.concatenate([
+            arr[:max(2, h//20), :, :3].reshape(-1, 3),        # Topo
+            arr[-max(2, h//20):, :, :3].reshape(-1, 3),       # Base
+            arr[:, :max(2, w//20), :3].reshape(-1, 3),        # Esquerda
+            arr[:, -max(2, w//20):, :3].reshape(-1, 3),       # Direita
+        ], axis=0)
+
+        bg_mean = np.mean(border_pixels, axis=0)
+        bg_std = np.std(border_pixels, axis=0) + 12.0
+
+        # Distância de cor euclidiana ponderada em relação à cor predominante das bordas
+        rgb_channels = arr[:, :, :3]
+        color_diff = np.sqrt(np.sum(((rgb_channels - bg_mean) / bg_std) ** 2, axis=2))
+
+        # Gradientes para detecção de arestas (contorno do sujeito)
+        lum = 0.299 * rgb_channels[:, :, 0] + 0.587 * rgb_channels[:, :, 1] + 0.114 * rgb_channels[:, :, 2]
+        gy, gx = np.gradient(lum)
+        edge_mag = np.sqrt(gx**2 + gy**2)
+
+        # Máscara binária / soft alpha
+        threshold = 2.2
+        soft_mask = np.clip((color_diff - threshold) * 80.0 + edge_mag * 1.5, 0.0, 255.0)
+
+        # Filtro de suavização de bordas (feather / antialiasing)
+        mask_img = Image.fromarray(soft_mask.astype(np.uint8), mode="L")
+        if feather > 0.5:
+            mask_img = mask_img.filter(ImageFilter.GaussianBlur(feather))
+
+        mask_arr = np.array(mask_img, dtype=np.float32) / 255.0
+
+        if backdrop_type == "transparent":
+            result_rgba = arr.copy()
+            result_rgba[:, :, 3] = np.clip(result_rgba[:, :, 3] * mask_arr, 0, 255)
+            out_img = Image.fromarray(result_rgba.astype(np.uint8), mode="RGBA")
+            buf = io.BytesIO()
+            out_img.save(buf, format="PNG")
+            return buf.getvalue(), "image/png"
+
+        # Cores para os fundos pré-calibrados
+        if backdrop_type == "pure_white":
+            bg_col = (255, 255, 255)
+        elif backdrop_type == "studio_grey":
+            bg_col = (46, 48, 54)
+        elif backdrop_type == "infinite_black":
+            bg_col = (11, 11, 14)
+        elif backdrop_type == "custom_color":
+            clean_hex = custom_color_hex.lstrip("#")
+            if len(clean_hex) == 6:
+                bg_col = (int(clean_hex[0:2], 16), int(clean_hex[2:4], 16), int(clean_hex[4:6], 16))
+            else:
+                bg_col = (255, 255, 255)
+        else: # gradient
+            bg_col = (35, 36, 42)
+
+        bg_canvas = Image.new("RGB", (w, h), bg_col)
+
+        # Gradiente radial suave no centro
+        if backdrop_type == "gradient":
+            cx, cy = w // 2, int(h * 0.45)
+            y, x = np.ogrid[:h, :w]
+            dist_from_center = np.sqrt((x - cx)**2 + (y - cy)**2)
+            max_dist = np.sqrt(cx**2 + cy**2)
+            grad_factor = np.clip(1.0 - (dist_from_center / max_dist) * 0.6, 0.4, 1.0)
+            bg_arr = np.zeros((h, w, 3), dtype=np.uint8)
+            for c in range(3):
+                bg_arr[:, :, c] = np.clip(bg_col[c] * grad_factor * 1.5, 0, 255).astype(np.uint8)
+            bg_canvas = Image.fromarray(bg_arr)
+
+        # Sombra de contato opcional na base
+        if add_contact_shadow and backdrop_type in ("pure_white", "studio_grey", "gradient", "custom_color"):
+            row_weights = np.sum(mask_arr, axis=1)
+            active_rows = np.where(row_weights > w * 0.05)[0]
+            if len(active_rows) > 0:
+                bottom_row = active_rows[-1]
+                shadow_y = min(h - 1, bottom_row + int(h * 0.02))
+                shadow_overlay = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+                draw = ImageDraw.Draw(shadow_overlay)
+                box_x1 = int(w * 0.25)
+                box_x2 = int(w * 0.75)
+                box_y1 = max(0, shadow_y - int(h * 0.04))
+                box_y2 = min(h, shadow_y + int(h * 0.04))
+                draw.ellipse([box_x1, box_y1, box_x2, box_y2], fill=(0, 0, 0, 75))
+                shadow_overlay = shadow_overlay.filter(ImageFilter.GaussianBlur(radius=max(3, w // 40)))
+                bg_canvas.paste(shadow_overlay, (0, 0), shadow_overlay)
+
+        fg_rgb = Image.fromarray(arr[:, :, :3].astype(np.uint8))
+        bg_canvas.paste(fg_rgb, (0, 0), mask_img)
+
+        buf = io.BytesIO()
+        bg_canvas.save(buf, format="JPEG", quality=96)
+        return buf.getvalue(), "image/jpeg"
+
+
+def build_lighting_setup_sheet_data(
+    rig: SpatialLightingRig,
+    lens: str = "85mm",
+    aperture: str = "f/2.8",
+    film: str = "Kodak Portra 400",
+    project_title: str = "Produção Comercial LUMEN Co-Pilot",
+    client_name: Optional[str] = None,
+) -> dict:
+    """
+    Gera a especificação técnica completa de montagem de iluminação (Ficha de Set),
+    com lista de equipamentos, modificadores recomendados, potências em Watts/Joules e distâncias.
+    """
+    key = rig.key_light
+    rim = rig.rim_light
+    fill = rig.fill_light
+
+    key_power_ws = int(round((key.intensity / 100.0) * 800))
+    rim_power_ws = int(round((rim.intensity / 100.0) * 400))
+    fill_power_ws = int(round((fill.intensity / 100.0) * 200)) if fill and fill.enabled else 0
+
+    if key.softness > 70:
+        key_modifier = "Octabox 120cm c/ Difusor Duplo e Grid"
+    elif key.softness > 40:
+        key_modifier = "Softbox Retangular 80x120cm"
+    else:
+        key_modifier = "Panela Refletora Standard 7\" c/ Colmeia 20°"
+
+    if rim.softness > 60:
+        rim_modifier = "Stripbox 30x140cm c/ Difusor"
+    else:
+        rim_modifier = "Stripbox 30x120cm c/ Grid / Colmeia de Recorte"
+
+    fill_modifier = "Sombrinha Parabólica Prata 130cm ou Rebatedor Branco 5-em-1" if fill and fill.enabled else "Negative Fill (Bandeira Preta)"
+
+    return {
+        "title": project_title,
+        "date": time.strftime("%d/%m/%Y %H:%M"),
+        "client": client_name or "Cliente Geral",
+        "camera_spec": {
+            "lens": lens,
+            "aperture": aperture,
+            "shutter_speed": "1/160s (Sync Flash)",
+            "iso": "ISO 100 (Base RAW)",
+            "film_profile": film,
+        },
+        "ratio": getattr(rig, "spatial_summary", "2:1 Comercial Equilibrado"),
+        "lights": [
+            {
+                "role": "Luz Principal (Key Light)",
+                "angle_deg": key.angle_deg,
+                "elevation_deg": getattr(key, "elevation_deg", 45),
+                "distance_m": getattr(key, "distance_m", round(getattr(key, "distance_pct", 65) / 30.0, 1)),
+                "intensity_pct": key.intensity,
+                "power_ws": f"{key_power_ws} Ws",
+                "modifier": key_modifier,
+                "color_temp": f"{getattr(key, 'color_temp_k', 5600)}K ({key.color_label})",
+                "color_hex": getattr(key, "color_hex", "#FFD166"),
+                "notes": "Posicionar a 45° do nariz da modelo para triângulo Rembrandt suave.",
+            },
+            {
+                "role": "Contraluz de Recorte (Rim Light)",
+                "angle_deg": rim.angle_deg,
+                "elevation_deg": getattr(rim, "elevation_deg", 60),
+                "distance_m": getattr(rim, "distance_m", round(getattr(rim, "distance_pct", 75) / 30.0, 1)),
+                "intensity_pct": rim.intensity,
+                "power_ws": f"{rim_power_ws} Ws",
+                "modifier": rim_modifier,
+                "color_temp": f"{getattr(rim, 'color_temp_k', 6500)}K ({rim.color_label})",
+                "color_hex": getattr(rim, "color_hex", "#80D8FF"),
+                "notes": "Recorte nos ombros e contorno do cabelo, sem vazar na lente da câmera.",
+            },
+            {
+                "role": "Luz de Preenchimento (Fill Light)",
+                "angle_deg": fill.angle_deg if fill else 0,
+                "elevation_deg": getattr(fill, "elevation_deg", 15) if fill else 0,
+                "distance_m": getattr(fill, "distance_m", round(getattr(fill, "distance_pct", 85) / 30.0, 1)) if fill else 3.0,
+                "intensity_pct": fill.intensity if fill else 0,
+                "power_ws": f"{fill_power_ws} Ws" if fill and fill.enabled else "0 Ws (Passivo)",
+                "modifier": fill_modifier,
+                "color_temp": f"{getattr(fill, 'color_temp_k', 5600)}K" if fill and fill.enabled else "Neutro",
+                "color_hex": getattr(fill, "color_hex", "#FFFFFF") if fill else "#FFFFFF",
+                "notes": "Controla a profundidade das sombras sem criar segundas sombras indesejadas.",
+            },
+        ],
+        "equipment_checklist": [
+            f"1x Tocha de Estúdio {key_power_ws}Ws ({key_modifier})",
+            f"1x Tocha de Estúdio {rim_power_ws}Ws ({rim_modifier})",
+            f"1x Suporte de Preenchimento ({fill_modifier})",
+            "3x Tripés C-Stand cromados com braço girafa e sacos de areia",
+            "1x Fotômetro / Rádio transmissor de sincronismo 2.4GHz",
+            "1x Cartão de Cinza Neutro 18% para calibração de balanço de branco",
+        ],
+    }
 
 
 # ==============================================================================

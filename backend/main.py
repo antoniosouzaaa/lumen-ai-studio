@@ -19,6 +19,7 @@ from backend.orchestra import (
     ExportPsdRequest,
     ExportTiffRequest,
     LOOKBOOK_ANGLES,
+    LightingSetupCardRequest,
     LookbookRequest,
     ProductionRequest,
     RateItemRequest,
@@ -26,8 +27,11 @@ from backend.orchestra import (
     RelightRequest,
     SocialPackRequest,
     SpatialLightingRig,
+    StudioBackdropRequest,
     WhiteBalanceRequest,
+    apply_studio_backdrop,
     build_layered_psd,
+    build_lighting_setup_sheet_data,
     build_pro_raw_tiff,
     calibrate_white_balance_at_coords,
     cancel_job,
@@ -284,6 +288,50 @@ async def api_export_tiff(payload: ExportTiffRequest):
         }
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Erro ao gerar TIFF 16-bit: {exc}") from exc
+
+
+@app.post("/api/edit/backdrop")
+async def api_edit_backdrop(payload: StudioBackdropRequest):
+    if not payload.image_base64 or len(payload.image_base64) < 32:
+        raise HTTPException(status_code=422, detail="Imagem é obrigatória para alteração de fundo.")
+    try:
+        raw = payload.image_base64
+        if "," in raw:
+            raw = raw.split(",", 1)[1]
+        img_bytes = base64.b64decode(raw)
+        result_bytes, mime = await asyncio.to_thread(
+            apply_studio_backdrop,
+            img_bytes,
+            payload.backdrop_type,
+            payload.custom_color_hex,
+            payload.add_contact_shadow,
+            payload.feather,
+        )
+        b64 = base64.b64encode(result_bytes).decode("utf-8")
+        return {
+            "image_base64": f"data:{mime};base64,{b64}",
+            "backdrop_type": payload.backdrop_type,
+            "mime_type": mime,
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Erro ao processar fundo de estúdio: {exc}") from exc
+
+
+@app.post("/api/lighting-card")
+async def api_lighting_card(payload: LightingSetupCardRequest):
+    try:
+        data = await asyncio.to_thread(
+            build_lighting_setup_sheet_data,
+            payload.lighting_rig,
+            payload.lens,
+            payload.aperture,
+            payload.film,
+            payload.project_title,
+            payload.client_name,
+        )
+        return data
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Erro ao gerar ficha técnica de luz: {exc}") from exc
 
 
 @app.get("/api/lookbook/angles")
