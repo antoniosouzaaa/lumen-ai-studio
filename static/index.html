@@ -2,22 +2,23 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LUMEN — AI PHOTOGRAPHY STUDIO</title>
-  <meta name="description" content="LUMEN: AI PHOTOGRAPHY STUDIO. Every image has a light." />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>LUMEN Studio 6.0 — AI Photography Studio</title>
+  <meta name="description" content="LUMEN Studio 6.0. Direção de iluminação 360°, edição iterativa não destrutiva e entrega multiformato." />
 
-  <!-- Tipografia Oficial: Inter & JetBrains Mono -->
+  <!-- Tipografia: Cormorant Garamond (Editorial) + Plus Jakarta Sans (UI) + JetBrains Mono (Tech) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
     rel="stylesheet"
   />
 
-  <!-- Tailwind CSS via CDN configurado estritamente com os Design Tokens do LUMEN -->
+  <!-- Tailwind CSS via CDN com tokens LUMEN 6.0 -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
+      darkMode: ['selector', '[data-theme="dark"]'],
       theme: {
         extend: {
           colors: {
@@ -43,799 +44,851 @@
             info: 'var(--color-info)',
           },
           fontFamily: {
-            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
-            mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
+            sans: ['"Plus Jakarta Sans"', 'Inter', 'sans-serif'],
+            display: ['"Cormorant Garamond"', 'Georgia', 'serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
           },
         },
       },
     };
   </script>
 
-  <!-- Estilos e Design Tokens Oficiais do LUMEN -->
-  <link rel="stylesheet" href="/static/css/style.css?v=3.1" />
+  <!-- Estilos e Design System LUMEN 6.0 -->
+  <link rel="stylesheet" href="/static/css/style.css?v=6.0" />
 
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body class="bg-bg text-text antialiased selection:bg-accent selection:text-accent-text">
 
-  <!-- HEADER COMPACTO (64px) -->
+  <!-- HEADER COMPACTO (60px) -->
   <header class="lumen-header" role="banner">
-    <div class="flex items-center gap-4">
-      <div class="flex items-baseline gap-3">
+    <div class="flex items-center gap-3">
+      <div class="flex items-baseline gap-2.5">
         <span class="lumen-brand-wordmark">LUMEN</span>
-        <span class="lumen-brand-descriptor">AI PHOTOGRAPHY STUDIO</span>
+        <span class="lumen-brand-descriptor">Studio 6.0</span>
       </div>
       <span class="hidden md:inline-block h-3.5 w-px bg-border" aria-hidden="true"></span>
       <p class="hidden md:block lumen-brand-slogan m-0">Every image has a light.</p>
     </div>
 
-    <div class="flex items-center gap-3">
+    <!-- Seletor do Projeto Atual & Ações Rápidas -->
+    <div class="flex items-center gap-2 sm:gap-3">
+      <div class="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface border border-border text-xs">
+        <i data-lucide="folder" class="w-3.5 h-3.5 text-accent" aria-hidden="true"></i>
+        <span class="text-text-muted">Projeto:</span>
+        <select id="header-project-select" class="bg-transparent border-0 text-ivory text-xs font-semibold focus:outline-none cursor-pointer">
+          <option value="proj_default">Sessão Principal de Estúdio</option>
+        </select>
+      </div>
+
+      <!-- Alternador de Tema Claro / Escuro -->
+      <button
+        type="button"
+        id="theme-toggle-btn"
+        class="lumen-btn-secondary p-1.5 min-h-[34px]"
+        title="Alternar entre tema escuro e tema claro editorial"
+        aria-label="Alternar tema"
+      >
+        <i id="theme-toggle-icon" data-lucide="sun" class="w-4 h-4 text-text-secondary" aria-hidden="true"></i>
+      </button>
+
       <!-- Indicador Real de Status (/health) -->
       <div
         id="system-status-badge"
-        class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface border border-border text-xs text-text-secondary"
+        class="flex items-center gap-2 px-2.5 py-1 rounded-full bg-surface border border-border text-xs text-text-secondary"
         role="status"
         aria-live="polite"
       >
-        <span
-          id="system-status-dot"
-          class="w-2 h-2 rounded-full"
-          style="background-color: var(--color-stone);"
-          aria-hidden="true"
-        ></span>
-        <span id="system-status-text">Verificando sistema…</span>
+        <span id="system-status-dot" class="w-2 h-2 rounded-full bg-stone" aria-hidden="true"></span>
+        <span id="system-status-text" class="hidden sm:inline">Online</span>
       </div>
-
-      <!-- Botão Drawer de Histórico -->
-      <button
-        type="button"
-        id="open-history-btn"
-        class="lumen-btn-secondary"
-        aria-label="Abrir histórico de produções"
-        aria-expanded="false"
-        aria-controls="history-drawer"
-      >
-        <i data-lucide="archive" class="w-4 h-4 text-text-secondary" aria-hidden="true"></i>
-        <span>Histórico</span>
-        <span
-          id="history-count-badge"
-          class="px-1.5 py-0.5 text-[11px] font-mono rounded bg-surface-active text-text-secondary border border-border"
-        >0</span>
-      </button>
     </div>
   </header>
 
-  <!-- LAYOUT PRINCIPAL: PALCO DE LUZ ESPACIAL 360° + WORKSPACE -->
-  <div class="lumen-layout">
+  <!-- SHELL PRINCIPAL: RAIL 5 ÁREAS + CONTROLES + WORKSPACE -->
+  <div class="lumen-shell" id="app-shell">
 
-    <!-- SIDEBAR: PALCO DE LUZ 360° + LINGUAGEM NATURAL -->
-    <aside class="lumen-sidebar" aria-label="Palco de Luz Espacial 360 graus e direção criativa">
-      <form id="production-form" class="flex flex-col gap-3.5 h-full justify-between" novalidate>
+    <!-- 1. NAVIGATION RAIL LATERAL (5 Áreas) -->
+    <nav class="lumen-nav-rail" aria-label="Navegação principal da plataforma">
+      <button
+        type="button"
+        class="lumen-nav-btn is-active"
+        data-nav-target="studio"
+        aria-label="Área de Criação e Direção Studio"
+        aria-current="page"
+      >
+        <i data-lucide="sun" class="w-4 h-4" aria-hidden="true"></i>
+        <span>Studio</span>
+      </button>
 
-        <div class="flex flex-col gap-3.5">
+      <button
+        type="button"
+        class="lumen-nav-btn"
+        data-nav-target="projects"
+        aria-label="Projetos, originais e versões"
+      >
+        <i data-lucide="folder-kanban" class="w-4 h-4" aria-hidden="true"></i>
+        <span>Projetos</span>
+      </button>
 
-          <!-- CORAÇÃO DO LUMEN: PALCO DE LUZ ESPACIAL 360° -->
-          <div class="lumen-light-stage-box">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-semibold uppercase tracking-wider text-accent flex items-center gap-1.5">
-                <i data-lucide="sun" class="w-3.5 h-3.5" aria-hidden="true"></i>
-                <span>Palco de Luz Espacial 360°</span>
-              </span>
-              <span class="text-[11px] text-text-muted">Arraste os refletores</span>
-            </div>
+      <button
+        type="button"
+        class="lumen-nav-btn"
+        data-nav-target="recipes"
+        aria-label="Receitas reutilizáveis de iluminação"
+      >
+        <i data-lucide="sparkles" class="w-4 h-4" aria-hidden="true"></i>
+        <span>Receitas</span>
+      </button>
 
-            <!-- Canvas Interativo 60fps com Esfera 3D Sombreada em Tempo Real -->
-            <div class="lumen-radar-canvas-wrap">
-              <canvas
-                id="light-stage-canvas"
-                width="460"
-                height="460"
-                aria-label="Radar interativo de iluminação 360 graus. Arraste a Luz Principal ou a Contraluz ao redor do sujeito."
-              ></canvas>
-            </div>
+      <button
+        type="button"
+        class="lumen-nav-btn"
+        data-nav-target="pack"
+        aria-label="Campanhas multiformato e brand kit"
+      >
+        <i data-lucide="layers" class="w-4 h-4" aria-hidden="true"></i>
+        <span>Pack</span>
+      </button>
 
-            <!-- Leitura Viva da Posição Física das Luzes -->
-            <div
-              id="spatial-light-readout"
-              class="px-2.5 py-1.5 rounded bg-surface border border-border text-[11px] text-ivory leading-snug text-center font-medium"
-            >
-              Luz principal a 45° pela esquerda (Rembrandt) + Contraluz fria à direita
-            </div>
+      <button
+        type="button"
+        class="lumen-nav-btn"
+        data-nav-target="history"
+        aria-label="Histórico de jobs e versões"
+      >
+        <i data-lucide="history" class="w-4 h-4" aria-hidden="true"></i>
+        <span>Jobs</span>
+      </button>
+    </nav>
 
-            <!-- Controles de Cor da Luz Principal e Contraluz -->
-            <div class="flex items-center justify-between gap-2 pt-1 border-t border-border">
-              <div class="flex items-center gap-1.5">
-                <span class="text-[11px] text-text-secondary mr-0.5">Cor do Sol:</span>
-                <button
-                  type="button"
-                  class="lumen-color-swatch is-selected"
-                  style="background: #FFD166;"
-                  data-light-color="Sol Dourado"
-                  data-light-hex="#FFD166"
-                  title="Sol Dourado (Hora Dourada)"
-                  aria-label="Cor Sol Dourado"
-                ></button>
-                <button
-                  type="button"
-                  class="lumen-color-swatch"
-                  style="background: #F4F6F8;"
-                  data-light-color="Luz do Dia"
-                  data-light-hex="#F4F6F8"
-                  title="Luz do Dia Neutra (5600K)"
-                  aria-label="Cor Luz do Dia"
-                ></button>
-                <button
-                  type="button"
-                  class="lumen-color-swatch"
-                  style="background: #FF9F43;"
-                  data-light-color="Tungstênio Âmbar"
-                  data-light-hex="#FF9F43"
-                  title="Tungstênio Âmbar Intimista"
-                  aria-label="Cor Tungstênio Âmbar"
-                ></button>
-                <button
-                  type="button"
-                  class="lumen-color-swatch"
-                  style="background: #74B9FF;"
-                  data-light-color="Frio Noturno"
-                  data-light-hex="#74B9FF"
-                  title="Azul Frio Noturno Cinematográfico"
-                  aria-label="Cor Frio Noturno"
-                ></button>
-                <button
-                  type="button"
-                  class="lumen-color-swatch"
-                  style="background: #FD79A8;"
-                  data-light-color="Rosa Crepúsculo"
-                  data-light-hex="#FD79A8"
-                  title="Rosa Crepúsculo"
-                  aria-label="Cor Rosa Crepúsculo"
-                ></button>
-              </div>
+    <!-- 2. PAINEL DE CONTROLES DO STUDIO (SIDEBAR 376px) -->
+    <aside class="lumen-sidebar" id="studio-sidebar" aria-label="Palco de iluminação e parâmetros ópticos">
+      <form id="production-form" class="flex flex-col gap-3 justify-between h-full" novalidate>
+        <div class="flex flex-col gap-3">
 
-              <button
-                type="button"
-                id="toggle-rim-light-btn"
-                class="lumen-natural-chip py-0.5 px-2 text-[11px]"
-                aria-pressed="true"
-              >
-                2ª Luz (Contraluz): ON
-              </button>
-            </div>
-
-            <!-- Presets Espaciais Clássicos (Movem as luzes no radar com 1 clique) -->
-            <div class="flex flex-wrap gap-1">
-              <button type="button" class="lumen-natural-chip" data-stage-preset="rembrandt">Rembrandt 45°</button>
-              <button type="button" class="lumen-natural-chip" data-stage-preset="split">Lateral 90° (Split)</button>
-              <button type="button" class="lumen-natural-chip" data-stage-preset="silhouette">Contraluz 180°</button>
-              <button type="button" class="lumen-natural-chip" data-stage-preset="cinema">Dupla Luz Cinema</button>
-            </div>
-
-            <!-- Botão Especial: Reiluminar Foto Atual quando já houver foto no palco -->
-            <button
-              type="button"
-              id="relight-current-photo-btn"
-              class="hidden w-full py-2 px-3 rounded-md text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer transition"
-              style="background-color: var(--color-surface-active); border: 1px solid var(--color-accent); color: var(--color-accent);"
-            >
-              <i data-lucide="sparkles" class="w-3.5 h-3.5" aria-hidden="true"></i>
-              <span>Reiluminar foto atual com este novo ângulo 360°</span>
+          <!-- Abas de Controle: Luz | Câmera | Sujeito | Estilo -->
+          <div class="lumen-control-tabs" role="tablist" aria-label="Abas de parâmetros">
+            <button type="button" class="lumen-control-tab is-active" data-tab-panel="tab-light" role="tab" aria-selected="true">
+              <i data-lucide="sun-medium" class="w-3.5 h-3.5" aria-hidden="true"></i>
+              <span>Luz</span>
+            </button>
+            <button type="button" class="lumen-control-tab" data-tab-panel="tab-camera" role="tab" aria-selected="false">
+              <i data-lucide="camera" class="w-3.5 h-3.5" aria-hidden="true"></i>
+              <span>Câmera</span>
+            </button>
+            <button type="button" class="lumen-control-tab" data-tab-panel="tab-subject" role="tab" aria-selected="false">
+              <i data-lucide="user-check" class="w-3.5 h-3.5" aria-hidden="true"></i>
+              <span>Sujeito</span>
+            </button>
+            <button type="button" class="lumen-control-tab" data-tab-panel="tab-darkroom" role="tab" aria-selected="false">
+              <i data-lucide="sliders" class="w-3.5 h-3.5" aria-hidden="true"></i>
+              <span>Estilo</span>
             </button>
           </div>
 
-          <!-- 2. Briefing em Linguagem Natural -->
-          <div class="flex flex-col gap-1">
-            <div class="flex items-center justify-between">
-              <label for="brief-input" class="lumen-section-label m-0">
-                Descreva a cena com suas palavras
-              </label>
-              <span class="text-[11px] text-text-muted font-mono">Ctrl + Enter</span>
-            </div>
-
-            <textarea
-              id="brief-input"
-              name="brief"
-              rows="3"
-              class="lumen-textarea"
-              placeholder="Descreva o sujeito, a cena, a iluminação, o clima e o que a imagem deve transmitir."
-              aria-describedby="brief-validation-alert"
-            ></textarea>
-
-            <div
-              id="brief-validation-alert"
-              class="hidden mt-1.5 px-3 py-2 rounded-md border text-xs font-medium flex items-center gap-2"
-              style="background-color: rgba(240, 198, 116, 0.08); border-color: var(--color-warning); color: var(--color-warning);"
-              role="alert"
-            >
-              <i data-lucide="alert-circle" class="w-4 h-4 shrink-0" aria-hidden="true"></i>
-              <span id="brief-validation-text">Conte como você imagina a cena antes de disparar a produção.</span>
-            </div>
-          </div>
-
-          <!-- Toques Rápidos em Linguagem Natural -->
-          <div class="flex flex-wrap gap-1" role="group" aria-label="Sugestões em linguagem natural">
-            <button type="button" class="lumen-natural-chip" data-phrase="com o fundo bem desfocado destacando o sujeito">+ Fundo desfocado</button>
-            <button type="button" class="lumen-natural-chip" data-phrase="com textura e cores quentes de filme analógico">+ Filme analógico</button>
-            <button type="button" class="lumen-natural-chip" data-phrase="em formato horizontal amplo de cinema">+ Horizontal (16:9)</button>
-            <button type="button" class="lumen-natural-chip" data-phrase="em formato vertical para retrato">+ Vertical (4:5)</button>
-          </div>
-
-          <!-- Foto de Inspiração (Upload / Ctrl+V) -->
-          <div class="flex flex-col gap-1">
-            <input
-              type="file"
-              id="reference-file-input"
-              accept="image/jpeg,image/png,image/webp"
-              class="hidden"
-            />
-
-            <div
-              id="reference-dropzone"
-              class="lumen-ref-dropzone flex items-center justify-between gap-2.5"
-              tabindex="0"
-              role="button"
-              aria-label="Enviar foto de referência"
-            >
-              <div id="reference-empty-prompt" class="flex items-center gap-2 text-xs text-text-secondary">
-                <i data-lucide="image-plus" class="w-4 h-4 text-text-muted shrink-0" aria-hidden="true"></i>
-                <span> Subir ou colar (`Ctrl+V`) foto de referência</span>
+          <!-- ABA 1: ILUMINAÇÃO (PALCO 360° + 3 FONTES + SOFTNESS + KEY:FILL + PRESETS + DIREÇÃO RÁPIDA) -->
+          <div id="tab-light" class="flex flex-col gap-3" role="tabpanel">
+            <div class="lumen-light-stage-box">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold uppercase tracking-wider text-accent flex items-center gap-1.5">
+                  <i data-lucide="aperture" class="w-3.5 h-3.5" aria-hidden="true"></i>
+                  <span>Palco de Luz 360° (3 Fontes)</span>
+                </span>
+                <span id="dirty-rig-indicator" class="text-[11px] font-mono text-text-muted">Rig sincronizado</span>
               </div>
 
-              <div id="reference-preview-container" class="hidden w-full flex items-center justify-between gap-2">
-                <div class="flex items-center gap-2 min-w-0">
-                  <img
-                    id="reference-preview-img"
-                    alt="Miniatura da foto de referência"
-                    class="w-8 h-8 rounded object-cover border border-border shrink-0"
-                  />
-                  <span class="text-xs font-medium text-ivory truncate">Referência visual ativa</span>
-                </div>
-                <button
-                  type="button"
-                  id="remove-reference-btn"
-                  class="lumen-btn-secondary p-1 text-xs"
-                  aria-label="Remover foto de referência"
-                >
-                  <i data-lucide="trash-2" class="w-3.5 h-3.5 text-danger" aria-hidden="true"></i>
+              <!-- Seletor da Fonte Ativa para Edição no Radar -->
+              <div class="lumen-source-selector" role="radiogroup" aria-label="Fonte luminosa selecionada">
+                <button type="button" class="lumen-source-pill is-selected" data-active-source="key" aria-checked="true">
+                  <span class="flex items-center gap-1">
+                    <span class="w-2 h-2 rounded-full" style="background:#FFD166;"></span>
+                    <span>Principal</span>
+                  </span>
+                  <span id="pill-key-angle" class="font-mono text-[10px]">315°</span>
+                </button>
+                <button type="button" class="lumen-source-pill" data-active-source="rim" aria-checked="false">
+                  <span class="flex items-center gap-1">
+                    <span class="w-2 h-2 rounded-full" style="background:#74B9FF;"></span>
+                    <span>Contraluz</span>
+                  </span>
+                  <span id="pill-rim-angle" class="font-mono text-[10px]">135°</span>
+                </button>
+                <button type="button" class="lumen-source-pill" data-active-source="fill" aria-checked="false">
+                  <span class="flex items-center gap-1">
+                    <span class="w-2 h-2 rounded-full" style="background:#F4F6F8;"></span>
+                    <span>Preench.</span>
+                  </span>
+                  <span id="pill-fill-angle" class="font-mono text-[10px]">45°</span>
                 </button>
               </div>
+
+              <!-- Canvas Interativo 60fps com Esfera 3D Sombreada -->
+              <div class="lumen-radar-canvas-wrap">
+                <canvas
+                  id="light-stage-canvas"
+                  width="448"
+                  height="448"
+                  tabindex="0"
+                  role="slider"
+                  aria-label="Radar de luz 360 graus. Use setas para ajustar ângulo, Shift+setas para 15 graus."
+                ></canvas>
+              </div>
+
+              <!-- Leitura Espacial e Razão Key:Fill -->
+              <div class="flex flex-col gap-1">
+                <div id="spatial-light-readout" class="px-2.5 py-1.5 rounded bg-surface border border-border text-[11px] text-ivory text-center font-medium leading-snug">
+                  Luz principal a 315° pela esquerda (Rembrandt)
+                </div>
+                <div class="flex items-center justify-between text-[11px] px-1 font-mono text-text-muted">
+                  <span>Razão Key:Fill:</span>
+                  <span id="key-fill-ratio-badge" class="text-accent font-semibold">3.0:1 (estimativa)</span>
+                </div>
+              </div>
+
+              <!-- Controles Detalhados da Fonte Ativa (Intensidade, Maciez, Cor, Toggle) -->
+              <div class="p-2.5 rounded bg-surface border border-border flex flex-col gap-2">
+                <div class="flex items-center justify-between text-xs">
+                  <span id="active-source-name-label" class="font-semibold text-ivory">Luz Principal (Key Light)</span>
+                  <button type="button" id="toggle-active-source-btn" class="lumen-natural-chip py-0.5 px-2 text-[10px]" aria-pressed="true">
+                    ON
+                  </button>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <div class="flex justify-between text-[11px] text-text-secondary mb-1">
+                      <span>Intensidade</span>
+                      <span id="active-source-intensity-val" class="font-mono text-accent">85%</span>
+                    </div>
+                    <input id="active-source-intensity-slider" type="range" min="0" max="100" value="85" class="lumen-slider" />
+                  </div>
+                  <div>
+                    <div class="flex justify-between text-[11px] text-text-secondary mb-1">
+                      <span>Maciez (Softness)</span>
+                      <span id="active-source-softness-val" class="font-mono text-accent">55%</span>
+                    </div>
+                    <input id="active-source-softness-slider" type="range" min="0" max="100" value="55" class="lumen-slider" />
+                  </div>
+                </div>
+
+                <!-- Temperatura de Cor da Fonte Ativa -->
+                <div class="flex items-center justify-between gap-1 pt-1 border-t border-border">
+                  <span class="text-[11px] text-text-secondary">Temperatura:</span>
+                  <div class="flex items-center gap-1.5" id="color-swatches-row">
+                    <button type="button" class="lumen-color-swatch is-selected" style="background:#FFD166;" data-light-color="Sol Dourado" title="Sol Dourado (3500K)"></button>
+                    <button type="button" class="lumen-color-swatch" style="background:#F4F6F8;" data-light-color="Luz do Dia" title="Luz do Dia Neutra (5600K)"></button>
+                    <button type="button" class="lumen-color-swatch" style="background:#FF9F43;" data-light-color="Tungstênio Âmbar" title="Tungstênio Âmbar (2700K)"></button>
+                    <button type="button" class="lumen-color-swatch" style="background:#74B9FF;" data-light-color="Frio Noturno" title="Frio Noturno (8000K)"></button>
+                    <button type="button" class="lumen-color-swatch" style="background:#FD79A8;" data-light-color="Rosa Crepúsculo" title="Rosa Crepúsculo"></button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 10 Presets Clássicos de Estúdio -->
+              <div>
+                <span class="text-[10px] uppercase font-bold tracking-wider text-text-muted block mb-1">10 Presets Clássicos</span>
+                <div class="grid grid-cols-2 gap-1 text-[11px]">
+                  <button type="button" class="lumen-natural-chip justify-center" data-stage-preset="rembrandt">Rembrandt</button>
+                  <button type="button" class="lumen-natural-chip justify-center" data-stage-preset="split">Split 90°</button>
+                  <button type="button" class="lumen-natural-chip justify-center" data-stage-preset="butterfly">Butterfly (Beauty)</button>
+                  <button type="button" class="lumen-natural-chip justify-center" data-stage-preset="loop">Loop Lighting</button>
+                  <button type="button" class="lumen-natural-chip justify-center" data-stage-preset="broad_short">Broad / Short</button>
+                  <button type="button" class="lumen-natural-chip justify-center" data-stage-preset="rim_light">Rim Light 180°</button>
+                  <button type="button" class="lumen-natural-chip justify-center" data-stage-preset="three_point">Três Pontos Pro</button>
+                  <button type="button" class="lumen-natural-chip justify-center" data-stage-preset="soft_catalog">Catálogo Suave</button>
+                  <button type="button" class="lumen-natural-chip justify-center" data-stage-preset="low_key">Dramático Low-Key</button>
+                  <button type="button" class="lumen-natural-chip justify-center" data-stage-preset="golden_hour">Hora Dourada</button>
+                </div>
+              </div>
+
+              <!-- 9 Ações de Direção Rápida com Undo -->
+              <div>
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-[10px] uppercase font-bold tracking-wider text-text-muted">Direção Rápida</span>
+                  <button type="button" id="undo-quick-action-btn" class="text-[10px] text-accent hover:underline hidden">Desfazer ação</button>
+                </div>
+                <div class="flex flex-wrap gap-1">
+                  <button type="button" class="lumen-natural-chip" data-quick-action="dramatic">Mais dramático</button>
+                  <button type="button" class="lumen-natural-chip" data-quick-action="soft_shadows">Sombras mais suaves</button>
+                  <button type="button" class="lumen-natural-chip" data-quick-action="warmer">Mais quente</button>
+                  <button type="button" class="lumen-natural-chip" data-quick-action="cooler">Mais frio</button>
+                  <button type="button" class="lumen-natural-chip" data-quick-action="bg_sep">Mais separação fundo</button>
+                  <button type="button" class="lumen-natural-chip" data-quick-action="clean_cat">Catálogo limpo</button>
+                  <button type="button" class="lumen-natural-chip" data-quick-action="golden">Hora dourada</button>
+                  <button type="button" class="lumen-natural-chip" data-quick-action="open_shadows">Abrir sombras</button>
+                  <button type="button" class="lumen-natural-chip" data-quick-action="tame_highlights">Reduzir altas luzes</button>
+                </div>
+              </div>
             </div>
           </div>
 
-          <!-- Toggle Modo Prova de Estúdio (3 Estudos de Luz) -->
-          <button
-            type="button"
-            id="contact-sheet-toggle"
-            class="lumen-toggle-card"
-            aria-pressed="false"
-          >
+          <!-- ABA 2: CÂMERA, FILME E ENQUADRAMENTO -->
+          <div id="tab-camera" class="hidden flex flex-col gap-3" role="tabpanel">
+            <div class="p-3 rounded-lg bg-surface border border-border flex flex-col gap-3">
+              <div>
+                <span class="lumen-section-label">Intenção de Lente</span>
+                <div class="grid grid-cols-4 gap-1.5 text-xs">
+                  <button type="button" class="lumen-natural-chip justify-center" data-optics-lens="24mm">24mm</button>
+                  <button type="button" class="lumen-natural-chip justify-center is-active" data-optics-lens="35mm">35mm</button>
+                  <button type="button" class="lumen-natural-chip justify-center" data-optics-lens="50mm">50mm</button>
+                  <button type="button" class="lumen-natural-chip justify-center" data-optics-lens="85mm">85mm</button>
+                </div>
+              </div>
+
+              <div>
+                <span class="lumen-section-label">Abertura e Profundidade</span>
+                <div class="grid grid-cols-3 gap-1.5 text-xs">
+                  <button type="button" class="lumen-natural-chip justify-center" data-optics-dof="shallow">Rasa (f/1.4)</button>
+                  <button type="button" class="lumen-natural-chip justify-center is-active" data-optics-dof="balanced">Natural (f/2.8)</button>
+                  <button type="button" class="lumen-natural-chip justify-center" data-optics-dof="deep">Profunda (f/8)</button>
+                </div>
+              </div>
+
+              <div>
+                <span class="lumen-section-label">Look e Ciência de Cor</span>
+                <div class="grid grid-cols-3 gap-1.5 text-xs">
+                  <button type="button" class="lumen-natural-chip justify-center is-active" data-optics-film="Kodak Portra 400">Portra</button>
+                  <button type="button" class="lumen-natural-chip justify-center" data-optics-film="CineStill 800T">CineStill</button>
+                  <button type="button" class="lumen-natural-chip justify-center" data-optics-film="Neutro">Neutro RAW</button>
+                </div>
+              </div>
+
+              <div>
+                <span class="lumen-section-label">Proporção (Aspect Ratio)</span>
+                <div class="grid grid-cols-4 gap-1.5 text-xs">
+                  <button type="button" class="lumen-natural-chip justify-center is-active" data-optics-ratio="4:5">4:5</button>
+                  <button type="button" class="lumen-natural-chip justify-center" data-optics-ratio="9:16">9:16</button>
+                  <button type="button" class="lumen-natural-chip justify-center" data-optics-ratio="1:1">1:1</button>
+                  <button type="button" class="lumen-natural-chip justify-center" data-optics-ratio="16:9">16:9</button>
+                </div>
+              </div>
+
+              <div>
+                <span class="lumen-section-label">Enquadramento</span>
+                <div class="grid grid-cols-4 gap-1 text-[11px]">
+                  <button type="button" class="lumen-natural-chip justify-center is-active" data-optics-framing="preserve">Preservar</button>
+                  <button type="button" class="lumen-natural-chip justify-center" data-optics-framing="closer">Aproximar</button>
+                  <button type="button" class="lumen-natural-chip justify-center" data-optics-framing="wider">Ampliar</button>
+                  <button type="button" class="lumen-natural-chip justify-center" data-optics-framing="center">Centrar</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ABA 3: SUJEITO, REFERÊNCIAS E CONSISTÊNCIA -->
+          <div id="tab-subject" class="hidden flex flex-col gap-3" role="tabpanel">
+            <div class="p-3 rounded-lg bg-surface border border-border flex flex-col gap-3">
+              <!-- Upload / Dropzone com Papel da Referência -->
+              <div>
+                <span class="lumen-section-label">Foto de Referência Visual</span>
+                <input type="file" id="reference-file-input" accept="image/jpeg,image/png,image/webp" class="hidden" />
+                <div id="reference-dropzone" class="lumen-ref-dropzone flex items-center justify-between gap-2" tabindex="0" role="button">
+                  <div id="reference-empty-prompt" class="flex items-center gap-2 text-xs text-text-secondary">
+                    <i data-lucide="image-plus" class="w-4 h-4 text-text-muted shrink-0" aria-hidden="true"></i>
+                    <span>Subir ou colar (Ctrl+V) foto</span>
+                  </div>
+                  <div id="reference-preview-container" class="hidden w-full flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2 min-w-0">
+                      <img id="reference-preview-img" alt="Referência" class="w-8 h-8 rounded object-cover border border-border shrink-0" />
+                      <span class="text-xs font-semibold text-ivory truncate">Referência Ativa</span>
+                    </div>
+                    <button type="button" id="remove-reference-btn" class="p-1 text-xs text-danger" title="Remover">
+                      <i data-lucide="trash-2" class="w-3.5 h-3.5" aria-hidden="true"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Botão de Análise de Iluminação por Referência -->
+                <button
+                  type="button"
+                  id="analyze-ref-lighting-btn"
+                  class="lumen-btn-secondary w-full mt-2 text-xs py-1.5 hidden"
+                  title="Estima direção, maciez e temperatura da referência"
+                >
+                  <i data-lucide="wand-2" class="w-3.5 h-3.5 text-accent" aria-hidden="true"></i>
+                  <span>Analisar iluminação da referência</span>
+                </button>
+                <div id="ref-analysis-result-box" class="hidden mt-2 p-2.5 rounded bg-bg border border-border text-[11px] flex flex-col gap-1"></div>
+              </div>
+
+              <!-- Categorias de Preservação -->
+              <div>
+                <span class="lumen-section-label">Categorias de Preservação</span>
+                <div class="flex flex-wrap gap-1" id="preserve-categories-group">
+                  <button type="button" class="lumen-natural-chip" data-preserve-cat="identity">Identidade/Rosto</button>
+                  <button type="button" class="lumen-natural-chip" data-preserve-cat="product">Forma do Produto</button>
+                  <button type="button" class="lumen-natural-chip" data-preserve-cat="apparel">Roupa/Tecido</button>
+                  <button type="button" class="lumen-natural-chip" data-preserve-cat="brand_logo">Logo/Marca</button>
+                  <button type="button" class="lumen-natural-chip" data-preserve-cat="background">Fundo/Cenário</button>
+                </div>
+              </div>
+
+              <!-- Travas (Locks) -->
+              <div>
+                <span class="lumen-section-label">Travas de Consistência</span>
+                <div class="flex flex-col gap-1.5" id="consistency-locks-group">
+                  <label class="flex items-center gap-2 text-xs text-text-secondary cursor-pointer">
+                    <input type="checkbox" id="lock-preserve-subject" class="rounded border-border" />
+                    <span>Preservar Sujeito</span>
+                  </label>
+                  <label class="flex items-center gap-2 text-xs text-text-secondary cursor-pointer">
+                    <input type="checkbox" id="lock-lighting-only" class="rounded border-border" />
+                    <span>Alterar apenas a iluminação</span>
+                  </label>
+                  <label class="flex items-center gap-2 text-xs text-text-secondary cursor-pointer">
+                    <input type="checkbox" id="lock-preserve-product" class="rounded border-border" />
+                    <span>Preservar produto e logotipo</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ABA 4: ESTILO / DARKROOM EM TEMPO REAL -->
+          <div id="tab-darkroom" class="hidden flex flex-col gap-3" role="tabpanel">
+            <div class="p-3 rounded-lg bg-surface border border-border flex flex-col gap-3">
+              <div class="flex items-center justify-between text-xs">
+                <span class="font-semibold text-ivory">Ajustes Darkroom Instantâneos</span>
+                <button type="button" id="reset-darkroom-tab-btn" class="text-text-muted hover:text-ivory text-[11px]">Restaurar</button>
+              </div>
+
+              <div class="flex flex-col gap-2.5 text-xs">
+                <div>
+                  <div class="flex justify-between text-[11px] mb-1">
+                    <span class="text-text-secondary">Exposição</span>
+                    <span id="dr-exposure-val" class="font-mono text-accent">0</span>
+                  </div>
+                  <input id="dr-exposure" type="range" min="-35" max="35" value="0" class="lumen-slider" />
+                </div>
+                <div>
+                  <div class="flex justify-between text-[11px] mb-1">
+                    <span class="text-text-secondary">Contraste</span>
+                    <span id="dr-contrast-val" class="font-mono text-accent">0</span>
+                  </div>
+                  <input id="dr-contrast" type="range" min="-35" max="35" value="0" class="lumen-slider" />
+                </div>
+                <div>
+                  <div class="flex justify-between text-[11px] mb-1">
+                    <span class="text-text-secondary">Temperatura</span>
+                    <span id="dr-warmth-val" class="font-mono text-accent">0</span>
+                  </div>
+                  <input id="dr-warmth" type="range" min="-40" max="40" value="0" class="lumen-slider" />
+                </div>
+                <div>
+                  <div class="flex justify-between text-[11px] mb-1">
+                    <span class="text-text-secondary">Vinheta</span>
+                    <span id="dr-vignette-val" class="font-mono text-accent">0</span>
+                  </div>
+                  <input id="dr-vignette" type="range" min="0" max="80" value="0" class="lumen-slider" />
+                </div>
+                <div>
+                  <div class="flex justify-between text-[11px] mb-1">
+                    <span class="text-text-secondary">Grão 35mm</span>
+                    <span id="dr-grain-val" class="font-mono text-accent">0</span>
+                  </div>
+                  <input id="dr-grain" type="range" min="0" max="60" value="0" class="lumen-slider" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- BRIEFING EM LINGUAGEM NATURAL -->
+          <div class="flex flex-col gap-1">
+            <div class="flex items-center justify-between">
+              <label for="brief-input" class="lumen-section-label m-0">Briefing Criativo</label>
+              <span class="text-[10px] text-text-muted font-mono">Ctrl + Enter</span>
+            </div>
+            <textarea
+              id="brief-input"
+              rows="3"
+              class="lumen-textarea"
+              placeholder="Descreva a cena, sujeito, clima ou ação (a luz é dirigida pelo radar acima)…"
+            ></textarea>
+            <div id="brief-validation-alert" class="hidden mt-1 px-2.5 py-1.5 rounded bg-warning/10 border border-warning text-warning text-xs flex items-center gap-1.5">
+              <i data-lucide="alert-circle" class="w-3.5 h-3.5 shrink-0" aria-hidden="true"></i>
+              <span id="brief-validation-text">Descreva a cena antes de produzir.</span>
+            </div>
+          </div>
+
+          <!-- Modo Prova de Estúdio (Contact Sheet) -->
+          <button type="button" id="contact-sheet-toggle" class="lumen-toggle-card" aria-pressed="false">
             <div class="flex flex-col">
               <span class="text-xs font-semibold text-ivory flex items-center gap-1.5">
-                <i data-lucide="layout-grid" class="w-3.5 h-3.5 text-text-secondary" aria-hidden="true"></i>
-                <span>Prova de Estúdio (3 ângulos de luz)</span>
+                <i data-lucide="layout-grid" class="w-3.5 h-3.5 text-accent" aria-hidden="true"></i>
+                <span>Prova de Estúdio (3 Estudos de Luz)</span>
               </span>
-              <span class="text-[11px] text-text-muted">
-                Compara seu ângulo do radar com Contraluz 180° e Lateral 90°
-              </span>
+              <span class="text-[11px] text-text-muted">Gera 3 variações simultâneas de ângulo</span>
             </div>
             <span class="lumen-toggle-indicator" aria-hidden="true"></span>
           </button>
 
         </div>
 
-        <!-- Botão Primário Proprietário -->
-        <div class="pt-2 border-t border-border">
-          <button
-            type="submit"
-            id="submit-production-btn"
-            class="lumen-btn-primary"
-          >
+        <!-- AÇÃO PRINCIPAL COM DIRTY STATE HONESTO -->
+        <div class="pt-2 border-t border-border flex flex-col gap-2">
+          <button type="submit" id="submit-production-btn" class="lumen-btn-primary">
             <i data-lucide="aperture" class="w-4 h-4" aria-hidden="true"></i>
             <span id="submit-btn-label">Disparar produção</span>
           </button>
+          <button type="button" id="save-current-recipe-btn" class="lumen-btn-secondary w-full text-xs py-1.5" title="Salva a luz atual como receita reutilizável">
+            <i data-lucide="bookmark-plus" class="w-3.5 h-3.5 text-accent" aria-hidden="true"></i>
+            <span>Salvar luz atual como Receita</span>
+          </button>
         </div>
-
       </form>
     </aside>
 
-    <!-- WORKSPACE PRINCIPAL (IMAGE FIRST) -->
+    <!-- 3. WORKSPACE PRINCIPAL (IMAGE FIRST) -->
     <main class="lumen-workspace" id="main-workspace">
 
-      <!-- Alerta de Erro de Execução / Segurança -->
-      <div
-        id="workspace-error-banner"
-        class="hidden px-4 py-3 rounded-lg border flex items-start justify-between gap-3"
-        style="background-color: rgba(255, 129, 120, 0.08); border-color: var(--color-danger); color: var(--color-danger);"
-        role="alert"
-      >
-        <div class="flex items-start gap-2.5">
-          <i data-lucide="alert-triangle" class="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true"></i>
-          <p id="workspace-error-text" class="m-0 text-sm leading-relaxed"></p>
+      <!-- ================= ÁREA 1: STUDIO CANVAS ================= -->
+      <div id="view-studio" class="flex flex-col gap-3 h-full">
+
+        <!-- Barra de Ferramentas Superior do Canvas (Zoom, Comparador, Histograma, Exportar) -->
+        <div class="lumen-canvas-toolbar" role="toolbar" aria-label="Ferramentas do visualizador">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-semibold text-ivory" id="active-version-title">Studio Ativo</span>
+            <span id="active-version-tag" class="text-[10px] font-mono px-2 py-0.5 rounded bg-surface border border-border text-accent hidden">v1</span>
+          </div>
+
+          <!-- Modos de Comparação e Visualização -->
+          <div class="flex items-center gap-1.5">
+            <button type="button" class="lumen-natural-chip is-active" data-canvas-mode="normal" title="Visualização simples">Normal</button>
+            <button type="button" class="lumen-natural-chip" data-canvas-mode="split" title="Comparador Antes/Depois com divisor arrastável">Antes / Depois</button>
+            <button type="button" class="lumen-natural-chip" data-canvas-mode="side_by_side" title="Comparação lado a lado">Lado a Lado</button>
+            <button type="button" class="lumen-btn-secondary p-1.5" id="toggle-checkerboard-btn" title="Alternar fundo neutro / quadriculado">
+              <i data-lucide="grid" class="w-3.5 h-3.5 text-text-secondary" aria-hidden="true"></i>
+            </button>
+          </div>
+
+          <!-- Controles de Zoom e Histograma -->
+          <div class="flex items-center gap-1.5">
+            <button type="button" class="lumen-btn-secondary px-2 py-1 text-xs" id="zoom-fit-btn">Ajustar</button>
+            <button type="button" class="lumen-btn-secondary px-2 py-1 text-xs" id="zoom-100-btn">100%</button>
+            <button type="button" class="lumen-btn-secondary p-1" id="zoom-out-btn"><i data-lucide="zoom-out" class="w-3.5 h-3.5" aria-hidden="true"></i></button>
+            <button type="button" class="lumen-btn-secondary p-1" id="zoom-in-btn"><i data-lucide="zoom-in" class="w-3.5 h-3.5" aria-hidden="true"></i></button>
+            <button type="button" class="lumen-btn-secondary p-1.5" id="toggle-histogram-btn" title="Exibir histograma e avisos de clipping">
+              <i data-lucide="bar-chart-2" class="w-3.5 h-3.5 text-accent" aria-hidden="true"></i>
+            </button>
+          </div>
         </div>
-        <button
-          type="button"
-          id="close-error-btn"
-          class="text-text-secondary hover:text-text p-1 rounded"
-          aria-label="Fechar mensagem de erro"
-        >
-          <i data-lucide="x" class="w-4 h-4" aria-hidden="true"></i>
-        </button>
+
+        <!-- Box do Histograma & Clipping (Expansível) -->
+        <div id="histogram-panel" class="hidden p-3 rounded-lg bg-surface border border-border flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div class="flex flex-col gap-1">
+            <span class="text-xs font-semibold text-ivory flex items-center gap-1.5">
+              <i data-lucide="bar-chart-2" class="w-3.5 h-3.5 text-accent" aria-hidden="true"></i>
+              <span>Histograma Óptico & Clipping</span>
+            </span>
+            <div class="flex items-center gap-3 text-[11px] font-mono">
+              <span id="hist-highlight-clip" class="text-text-muted">Altas luzes: 0.0%</span>
+              <span id="hist-shadow-crush" class="text-text-muted">Sombras: 0.0%</span>
+            </div>
+          </div>
+          <canvas id="histogram-canvas" width="256" height="64" class="rounded bg-bg border border-border"></canvas>
+        </div>
+
+        <!-- STAGE CENTRAL DE IMAGEM -->
+        <section class="lumen-stage" id="canvas-stage" aria-label="Visualizador da fotografia">
+
+          <!-- 1. Estado Vazio -->
+          <div id="state-empty" class="max-w-md text-center flex flex-col items-center gap-3 px-4">
+            <div class="w-12 h-12 rounded-full bg-surface border border-border flex items-center justify-center mb-1">
+              <i data-lucide="sun" class="w-6 h-6 text-accent" aria-hidden="true"></i>
+            </div>
+            <h1 class="text-xl md:text-2xl font-bold tracking-tight text-ivory m-0 font-editorial">
+              A imagem começa com uma intenção.
+            </h1>
+            <p class="text-sm text-text-secondary m-0 leading-relaxed">
+              Posicione os refletores no <strong>Palco de Luz 360°</strong> à esquerda, descreva a cena ou importe uma fotografia existente.
+            </p>
+            <div class="flex flex-wrap justify-center gap-2 mt-2">
+              <button type="button" class="lumen-natural-chip" data-example="Retrato intimista de uma mulher tomando café perto de uma janela chuvosa, olhar calmo e atmosfera cinematográfica.">
+                “Retrato em janela chuvosa…”
+              </button>
+              <button type="button" class="lumen-natural-chip" data-example="Fotografia esportiva de campanha em ângulo baixo: bola de futebol sobre grama molhada de estádio ao crepúsculo.">
+                “Campanha esportiva estádio…”
+              </button>
+            </div>
+          </div>
+
+          <!-- 2. Estado Gerando (NDJSON Stream + Telemetria de Job) -->
+          <div id="state-generating" class="hidden w-full max-w-md flex flex-col gap-3" aria-live="polite">
+            <div class="text-center mb-2">
+              <p class="text-xs font-mono uppercase tracking-widest text-text-muted m-0 mb-1" id="live-job-id-label">
+                Job em execução
+              </p>
+              <h2 id="generating-live-heading" class="text-base font-semibold text-ivory m-0">
+                Mapeando Palco 360° e direção óptica
+              </h2>
+            </div>
+            <div class="flex flex-col gap-2.5">
+              <div id="step-item-direction" class="lumen-step-item">
+                <span class="lumen-step-dot" aria-hidden="true"></span>
+                <div class="flex flex-col">
+                  <span class="text-xs font-semibold">1. Calculando incidência 360° e direção óptica</span>
+                  <span class="text-xs text-text-muted">Preparando direção fotográfica</span>
+                </div>
+              </div>
+              <div id="step-item-imaging" class="lumen-step-item">
+                <span class="lumen-step-dot" aria-hidden="true"></span>
+                <div class="flex flex-col">
+                  <span class="text-xs font-semibold">2. Revelando a fotografia com luz física</span>
+                  <span class="text-xs text-text-muted">Gerando imagem</span>
+                </div>
+              </div>
+              <div id="step-item-qa" class="lumen-step-item">
+                <span class="lumen-step-dot" aria-hidden="true"></span>
+                <div class="flex flex-col">
+                  <span class="text-xs font-semibold">3. Curadoria de luz e masterização RAW</span>
+                  <span class="text-xs text-text-muted">Auditando e aplicando filtros</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. Estado Sucesso: Visualizador Principal com Comparador Split e Lado a Lado -->
+          <div id="state-success" class="hidden w-full h-full flex flex-col items-center justify-between gap-4">
+            <div class="lumen-photo-viewport" id="photo-viewport">
+              <!-- Visualização Normal -->
+              <img id="result-image" class="lumen-photo-img" alt="Fotografia produzida no estúdio LUMEN" />
+
+              <!-- Visualização Split Slider (Antes / Depois) -->
+              <div id="split-comparator-box" class="hidden lumen-split-container">
+                <img id="split-after-img" class="lumen-photo-img" alt="Depois" />
+                <div id="split-before-wrap" class="lumen-split-before-wrap" style="clip-path: inset(0 50% 0 0);">
+                  <img id="split-before-img" class="lumen-photo-img" alt="Antes" />
+                </div>
+                <div id="split-divider-line" class="lumen-split-divider" style="left: 50%;" tabindex="0" role="slider" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100" aria-label="Divisor de comparação antes e depois">
+                  <div class="lumen-split-handle">
+                    <i data-lucide="move-horizontal" class="w-3.5 h-3.5" aria-hidden="true"></i>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Visualização Lado a Lado -->
+              <div id="side-by-side-box" class="hidden lumen-side-by-side-grid">
+                <div class="flex flex-col items-center gap-1.5">
+                  <span class="text-xs font-mono text-text-muted">Versão Anterior / Original</span>
+                  <img id="sbs-before-img" class="lumen-photo-img max-h-[50vh]" alt="Antes" />
+                </div>
+                <div class="flex flex-col items-center gap-1.5">
+                  <span class="text-xs font-mono text-accent">Versão Atual (Revelada)</span>
+                  <img id="sbs-after-img" class="lumen-photo-img max-h-[50vh]" alt="Depois" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Tira da Prova de Estúdio (Contact Sheet) -->
+            <div id="contact-sheet-strip" class="hidden lumen-contact-strip" aria-label="Estudos de iluminação"></div>
+
+            <!-- Barra de Conversa e Direção Iterativa -->
+            <div class="w-full bg-surface border border-border rounded-lg p-3 flex flex-col gap-2">
+              <div class="flex items-center justify-between gap-2">
+                <label for="refinement-input" class="text-xs font-semibold text-ivory flex items-center gap-1.5">
+                  <i data-lucide="message-square-plus" class="w-3.5 h-3.5 text-accent" aria-hidden="true"></i>
+                  <span>Direção Iterativa Contínua (Conversar com a Foto)</span>
+                </label>
+                <div class="hidden sm:flex items-center gap-1.5">
+                  <button type="button" class="lumen-natural-chip py-0.5 px-2 text-[11px]" data-quick-refine="Aproximar enquadramento no sujeito">Close-up</button>
+                  <button type="button" class="lumen-natural-chip py-0.5 px-2 text-[11px]" data-quick-refine="Adicionar chuva sutil e reflexos molhados">Chuva</button>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <input
+                  type="text"
+                  id="refinement-input"
+                  class="flex-1 bg-bg border border-border rounded-md px-3 py-2 text-xs text-ivory placeholder:text-text-muted focus:border-accent"
+                  placeholder="Peça qualquer alteração mantendo o mesmo sujeito e cena…"
+                />
+                <button type="button" id="apply-refinement-btn" class="lumen-btn-secondary py-2 px-3.5 text-xs font-semibold shrink-0" style="border-color: var(--color-accent); color: var(--color-accent);">
+                  <span>Ajustar cena</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Barra de Metadados Técnicos e Ações de Exportação -->
+            <div class="w-full flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-border">
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-text-muted">Óptica:</span>
+                <span id="result-metadata-bar" class="font-mono text-xs text-text-secondary bg-surface px-2.5 py-1 rounded border border-border"></span>
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                <button type="button" id="download-editorial-btn" class="lumen-btn-secondary text-xs" disabled>
+                  <i data-lucide="frame" class="w-4 h-4 text-ivory" aria-hidden="true"></i>
+                  <span>Pôster Fine Art</span>
+                </button>
+                <button type="button" id="download-image-btn" class="lumen-btn-primary text-xs w-auto px-4" disabled>
+                  <i data-lucide="download" class="w-4 h-4 text-accent-text" aria-hidden="true"></i>
+                  <span>Baixar imagem</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+        </section>
+
+        <!-- Painéis Expansíveis de Direção Fotográfica e Auditoria QA -->
+        <section id="technical-panels" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-4" aria-label="Detalhes técnicos">
+          <div class="lumen-accordion">
+            <button type="button" id="accordion-btn-direction" class="lumen-accordion-trigger" aria-expanded="true">
+              <span class="flex items-center gap-2">
+                <i data-lucide="sparkles" class="w-4 h-4 text-accent" aria-hidden="true"></i>
+                <span>Direção Fotográfica & Geometria 360°</span>
+              </span>
+              <i data-lucide="chevron-down" class="w-4 h-4 text-text-muted" aria-hidden="true"></i>
+            </button>
+            <div id="accordion-panel-direction" class="lumen-accordion-body">
+              <div class="pt-3 flex flex-col gap-2.5">
+                <p id="direction-optics-text" class="m-0 text-sm text-text-secondary leading-relaxed"></p>
+                <div class="flex items-center justify-between pt-1">
+                  <span class="text-[11px] font-mono text-text-muted">Prompt em inglês:</span>
+                  <button type="button" id="copy-prompt-btn" class="lumen-btn-secondary py-0.5 px-2 text-xs">Copiar</button>
+                </div>
+                <pre id="direction-prompt-text" class="m-0 p-2.5 rounded bg-bg border border-border font-mono text-xs text-text-secondary whitespace-pre-wrap break-words"></pre>
+              </div>
+            </div>
+          </div>
+
+          <div class="lumen-accordion">
+            <button type="button" id="accordion-btn-qa" class="lumen-accordion-trigger" aria-expanded="true">
+              <span class="flex items-center gap-2">
+                <i data-lucide="scan-eye" class="w-4 h-4 text-accent" aria-hidden="true"></i>
+                <span>Auditoria Visual & Telemetria</span>
+              </span>
+              <div class="flex items-center gap-2">
+                <span id="qa-score-pill" class="font-mono text-xs px-2 py-0.5 rounded bg-bg border border-border text-ivory"></span>
+                <i data-lucide="chevron-down" class="w-4 h-4 text-text-muted" aria-hidden="true"></i>
+              </div>
+            </button>
+            <div id="accordion-panel-qa" class="lumen-accordion-body">
+              <div id="qa-content-available" class="pt-3 flex flex-col gap-2 text-xs">
+                <div class="p-2 rounded bg-bg border border-border">
+                  <span class="font-semibold text-text-muted block mb-0.5">Iluminação:</span>
+                  <p id="qa-lighting-text" class="m-0 text-text-secondary"></p>
+                </div>
+                <div class="p-2 rounded bg-bg border border-border">
+                  <span class="font-semibold text-text-muted block mb-0.5">Lente e Geometria:</span>
+                  <p id="qa-lens-text" class="m-0 text-text-secondary"></p>
+                </div>
+                <div class="p-2 rounded bg-bg border border-border">
+                  <span class="font-semibold text-text-muted block mb-0.5">Telemetria de Provedor:</span>
+                  <p id="qa-telemetry-text" class="m-0 text-text-secondary font-mono"></p>
+                </div>
+                <div id="qa-suggestion-box" class="hidden p-2.5 rounded bg-surface-active border border-accent/40 flex items-center justify-between gap-2">
+                  <p id="qa-suggestion-text" class="m-0 text-ivory"></p>
+                  <button type="button" id="apply-qa-suggestion-btn" class="lumen-btn-secondary text-xs shrink-0">Aplicar</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
       </div>
 
-      <!-- PALCO CENTRAL DA IMAGEM (STAGE) -->
-      <section class="lumen-stage" aria-label="Visualizador principal de fotografia">
-
-        <!-- ESTADO 1: VAZIO (INICIAL) -->
-        <div id="state-empty" class="max-w-lg text-center flex flex-col items-center gap-3 px-4">
-          <div class="w-11 h-11 rounded-full bg-surface border border-border flex items-center justify-center mb-1">
-            <i data-lucide="sun" class="w-5 h-5 text-accent" aria-hidden="true"></i>
+      <!-- ================= ÁREA 2: PROJETOS & BIBLIOTECA DE ASSETS ================= -->
+      <div id="view-projects" class="hidden flex flex-col gap-4">
+        <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-border">
+          <div>
+            <h2 class="text-lg font-bold text-ivory m-0 font-editorial">Projetos & Campanhas</h2>
+            <p class="text-xs text-text-muted m-0">Organize originais importados, versões de luz e entregas por cliente ou ensaio.</p>
           </div>
-          <h1 class="text-xl md:text-2xl font-semibold tracking-tight text-ivory m-0">
-            A imagem começa com uma intenção.
-          </h1>
-          <p class="text-sm text-text-secondary m-0 leading-relaxed">
-            Posicione os refletores no <strong>Palco de Luz 360°</strong> à esquerda, descreva a cena com suas palavras ou experimente um exemplo rápido:
-          </p>
-          <div class="flex flex-wrap justify-center gap-2 mt-2">
-            <button
-              type="button"
-              class="lumen-natural-chip py-1.5 px-3 text-xs"
-              data-example="Retrato intimista de uma mulher tomando café perto de uma janela chuvosa, olhar calmo e atmosfera cinematográfica."
-            >
-              “Retrato perto de janela chuvosa…”
-            </button>
-            <button
-              type="button"
-              class="lumen-natural-chip py-1.5 px-3 text-xs"
-              data-example="Um músico tocando saxofone em um beco parisiense molhado à noite, fumaça sutil no ar e clima noir."
-            >
-              “Saxofonista à noite em beco molhado…”
-            </button>
-          </div>
-        </div>
-
-        <!-- ESTADO 2: GERANDO (ETAPAS REAIS VIA STREAMING NDJSON) -->
-        <div id="state-generating" class="hidden w-full max-w-md flex flex-col gap-3" aria-live="polite">
-          <div class="text-center mb-2">
-            <p class="text-xs font-mono uppercase tracking-widest text-text-muted m-0 mb-1">
-              Palco de Luz 360° em ação
-            </p>
-            <h2 id="generating-live-heading" class="text-base font-medium text-ivory m-0">
-              Mapeando Palco de Luz 360° e direção óptica
-            </h2>
-          </div>
-
-          <div class="flex flex-col gap-2.5">
-            <div id="step-item-direction" class="lumen-step-item">
-              <span class="lumen-step-dot" aria-hidden="true"></span>
-              <div class="flex flex-col">
-                <span class="text-xs font-semibold">1. Calculando incidência 360° e direção óptica</span>
-                <span class="text-xs text-text-muted">Preparando direção fotográfica</span>
-              </div>
-            </div>
-
-            <div id="step-item-imaging" class="lumen-step-item">
-              <span class="lumen-step-dot" aria-hidden="true"></span>
-              <div class="flex flex-col">
-                <span class="text-xs font-semibold">2. Revelando a fotografia com luz física</span>
-                <span class="text-xs text-text-muted">Gerando imagem</span>
-              </div>
-            </div>
-
-            <div id="step-item-qa" class="lumen-step-item">
-              <span class="lumen-step-dot" aria-hidden="true"></span>
-              <div class="flex flex-col">
-                <span class="text-xs font-semibold">3. Curadoria de luz e sombras</span>
-                <span class="text-xs text-text-muted">Analisando resultado</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- ESTADO 3: SUCESSO (FOTOGRAFIA + PROVA DE ESTÚDIO + REFINAMENTO + AÇÕES) -->
-        <div id="state-success" class="hidden w-full h-full flex flex-col items-center justify-between gap-4">
-          <div class="lumen-photo-viewport">
-            <img
-              id="result-image"
-              class="lumen-photo-img"
-              alt="Fotografia produzida no estúdio LUMEN"
-            />
-          </div>
-
-          <!-- Tira de Prova de Estúdio (3 Estudos de Luz) -->
-          <div id="contact-sheet-strip" class="hidden lumen-contact-strip" aria-label="Estudos de iluminação"></div>
-
-          <!-- Conversar com a Foto Atual (Direção Iterativa Contínua) -->
-          <div class="w-full bg-surface border border-border rounded-lg p-3 flex flex-col gap-2">
-            <div class="flex items-center justify-between gap-2">
-              <label for="refinement-input" class="text-xs font-semibold text-ivory flex items-center gap-1.5">
-                <i data-lucide="message-square-plus" class="w-3.5 h-3.5 text-accent" aria-hidden="true"></i>
-                <span>Conversar com esta foto ou girar a luz no Radar 360°</span>
-              </label>
-              <div class="hidden sm:flex items-center gap-1.5">
-                <button
-                  type="button"
-                  class="lumen-natural-chip py-0.5 px-2 text-[11px]"
-                  data-quick-refine="Aproximar mais o enquadramento no rosto e expressão"
-                >Close-up mais próximo</button>
-                <button
-                  type="button"
-                  class="lumen-natural-chip py-0.5 px-2 text-[11px]"
-                  data-quick-refine="Adicionar chuva sutil e reflexos molhados no ambiente"
-                >Clima de chuva</button>
-              </div>
-            </div>
-
-            <div class="flex items-center gap-2">
-              <input
-                type="text"
-                id="refinement-input"
-                class="flex-1 bg-bg border border-border rounded-md px-3 py-2 text-xs text-ivory placeholder:text-text-muted focus:border-accent"
-                placeholder="Peça qualquer mudança nesta cena (ou arraste os refletores no Radar 360° à esquerda)…"
-              />
-              <button
-                type="button"
-                id="apply-refinement-btn"
-                class="lumen-btn-secondary py-2 px-3.5 text-xs font-semibold shrink-0"
-                style="border-color: var(--color-accent); color: var(--color-accent);"
-              >
-                <span>Ajustar cena</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- Barra de Metadados Técnicos e Ações -->
-          <div class="w-full flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-border">
-            <div class="flex items-center gap-2">
-              <span class="text-xs text-text-muted">Direção escolhida:</span>
-              <span
-                id="result-metadata-bar"
-                class="font-mono-tech text-xs text-text-secondary bg-surface px-3 py-1.5 rounded-md border border-border"
-              ></span>
-            </div>
-
-            <div class="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                id="new-production-btn"
-                class="lumen-btn-secondary"
-              >
-                <i data-lucide="rotate-ccw" class="w-4 h-4 text-text-secondary" aria-hidden="true"></i>
-                <span>Nova produção</span>
-              </button>
-
-              <button
-                type="button"
-                id="download-editorial-btn"
-                class="lumen-btn-secondary"
-                disabled
-              >
-                <i data-lucide="frame" class="w-4 h-4 text-ivory" aria-hidden="true"></i>
-                <span>Baixar Pôster Fine Art</span>
-              </button>
-
-              <button
-                type="button"
-                id="download-image-btn"
-                class="lumen-btn-secondary"
-                style="border-color: var(--color-border-strong);"
-                disabled
-              >
-                <i data-lucide="download" class="w-4 h-4 text-accent" aria-hidden="true"></i>
-                <span>Baixar imagem</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-      </section>
-
-      <!-- LABORATÓRIO DE REVELAÇÃO DIGITAL (DARKROOM EM TEMPO REAL) -->
-      <section
-        id="darkroom-panel"
-        class="hidden lumen-accordion"
-        aria-label="Laboratório de Revelação Digital Darkroom"
-      >
-        <button
-          type="button"
-          id="accordion-btn-darkroom"
-          class="lumen-accordion-trigger"
-          aria-expanded="true"
-          aria-controls="accordion-panel-darkroom"
-        >
-          <span class="flex items-center gap-2">
-            <i data-lucide="sun-medium" class="w-4 h-4 text-accent" aria-hidden="true"></i>
-            <span>Laboratório de Revelação (Ajuste fino instantâneo)</span>
-          </span>
-          <i data-lucide="chevron-down" class="w-4 h-4 text-text-muted" aria-hidden="true"></i>
-        </button>
-
-        <div id="accordion-panel-darkroom" class="lumen-accordion-body">
-          <div class="pt-3 flex flex-col gap-4">
-            <div class="flex flex-wrap items-center justify-between gap-2">
-              <div class="flex flex-wrap items-center gap-1.5">
-                <span class="text-xs text-text-muted mr-1">Acabamento rápido:</span>
-                <button type="button" class="lumen-natural-chip" data-darkroom-preset="original">Original</button>
-                <button type="button" class="lumen-natural-chip" data-darkroom-preset="bw">Preto & Branco Clássico (Ilford)</button>
-                <button type="button" class="lumen-natural-chip" data-darkroom-preset="warm">Quente Analógico</button>
-                <button type="button" class="lumen-natural-chip" data-darkroom-preset="cinema">Contraste de Cinema</button>
-              </div>
-              <button
-                type="button"
-                id="reset-darkroom-btn"
-                class="text-xs text-text-muted hover:text-ivory bg-transparent border-0 cursor-pointer"
-              >Restaurar original</button>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-              <div class="flex flex-col gap-1.5">
-                <div class="flex justify-between text-xs">
-                  <label for="dr-exposure" class="text-text-secondary">Luz (Exposição)</label>
-                  <span id="dr-exposure-val" class="font-mono-tech text-text-muted">0</span>
-                </div>
-                <input id="dr-exposure" type="range" min="-35" max="35" value="0" class="lumen-slider" />
-              </div>
-
-              <div class="flex flex-col gap-1.5">
-                <div class="flex justify-between text-xs">
-                  <label for="dr-contrast" class="text-text-secondary">Contraste</label>
-                  <span id="dr-contrast-val" class="font-mono-tech text-text-muted">0</span>
-                </div>
-                <input id="dr-contrast" type="range" min="-35" max="35" value="0" class="lumen-slider" />
-              </div>
-
-              <div class="flex flex-col gap-1.5">
-                <div class="flex justify-between text-xs">
-                  <label for="dr-warmth" class="text-text-secondary">Temperatura (Frio/Quente)</label>
-                  <span id="dr-warmth-val" class="font-mono-tech text-text-muted">0</span>
-                </div>
-                <input id="dr-warmth" type="range" min="-40" max="40" value="0" class="lumen-slider" />
-              </div>
-
-              <div class="flex flex-col gap-1.5">
-                <div class="flex justify-between text-xs">
-                  <label for="dr-vignette" class="text-text-secondary">Vinheta de Lente</label>
-                  <span id="dr-vignette-val" class="font-mono-tech text-text-muted">0</span>
-                </div>
-                <input id="dr-vignette" type="range" min="0" max="80" value="0" class="lumen-slider" />
-              </div>
-
-              <div class="flex flex-col gap-1.5">
-                <div class="flex justify-between text-xs">
-                  <label for="dr-grain" class="text-text-secondary">Textura de Filme 35mm</label>
-                  <span id="dr-grain-val" class="font-mono-tech text-text-muted">0</span>
-                </div>
-                <input id="dr-grain" type="range" min="0" max="60" value="0" class="lumen-slider" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- PAINÉIS COMPLEMENTARES EXPANSÍVEIS (DIREÇÃO E AUDITORIA) -->
-      <section
-        id="technical-panels"
-        class="hidden grid grid-cols-1 lg:grid-cols-2 gap-4"
-        aria-label="Detalhes da direção e curadoria"
-      >
-        <!-- Accordion 1: Direção Fotográfica -->
-        <div class="lumen-accordion">
-          <button
-            type="button"
-            id="accordion-btn-direction"
-            class="lumen-accordion-trigger"
-            aria-expanded="true"
-            aria-controls="accordion-panel-direction"
-          >
-            <span class="flex items-center gap-2">
-              <i data-lucide="sparkles" class="w-4 h-4 text-text-secondary" aria-hidden="true"></i>
-              <span>Direção fotográfica</span>
-            </span>
-            <i data-lucide="chevron-down" class="w-4 h-4 text-text-muted" aria-hidden="true"></i>
+          <button type="button" id="new-project-btn" class="lumen-btn-primary w-auto px-4 py-2 text-xs">
+            <i data-lucide="folder-plus" class="w-4 h-4" aria-hidden="true"></i>
+            <span>Novo Projeto</span>
           </button>
+        </div>
+        <div id="projects-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+      </div>
 
-          <div id="accordion-panel-direction" class="lumen-accordion-body">
-            <div class="pt-3 flex flex-col gap-3">
-              <div>
-                <span class="block text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-1">
-                  Como o Palco de Luz 360° e sua ideia foram combinados
-                </span>
-                <p id="direction-optics-text" class="m-0 text-sm text-text-secondary leading-relaxed"></p>
-              </div>
-
-              <div>
-                <div class="flex items-center justify-between gap-2 mb-1.5">
-                  <span class="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
-                    Prompt fotográfico gerado
-                  </span>
-                  <button
-                    type="button"
-                    id="copy-prompt-btn"
-                    class="lumen-btn-secondary py-1 px-2.5 text-xs"
-                    aria-label="Copiar prompt técnico"
-                  >
-                    <i data-lucide="copy" class="w-3.5 h-3.5 text-text-secondary" aria-hidden="true"></i>
-                    <span>Copiar prompt</span>
-                  </button>
-                </div>
-                <pre
-                  id="direction-prompt-text"
-                  class="m-0 p-3 rounded-md bg-bg border border-border font-mono-tech text-xs text-text-secondary whitespace-pre-wrap break-words leading-relaxed"
-                ></pre>
-              </div>
-            </div>
+      <!-- ================= ÁREA 3: RECEITAS DE ILUMINAÇÃO ================= -->
+      <div id="view-recipes" class="hidden flex flex-col gap-4">
+        <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-border">
+          <div>
+            <h2 class="text-lg font-bold text-ivory m-0 font-editorial">Receitas de Luz Reutilizáveis</h2>
+            <p class="text-xs text-text-muted m-0">Biblioteca de esquemas de iluminação 360° testados em estúdio (Schema v1 com importação/exportação JSON).</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <input type="file" id="recipe-import-file" accept="application/json" class="hidden" />
+            <button type="button" id="import-recipe-btn" class="lumen-btn-secondary text-xs">
+              <i data-lucide="upload" class="w-3.5 h-3.5" aria-hidden="true"></i>
+              <span>Importar JSON</span>
+            </button>
           </div>
         </div>
+        <div id="recipes-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+      </div>
 
-        <!-- Accordion 2: Auditoria Visual + Sugestão Ativa -->
-        <div class="lumen-accordion">
-          <button
-            type="button"
-            id="accordion-btn-qa"
-            class="lumen-accordion-trigger"
-            aria-expanded="true"
-            aria-controls="accordion-panel-qa"
-          >
-            <span class="flex items-center gap-2">
-              <i data-lucide="scan-eye" class="w-4 h-4 text-text-secondary" aria-hidden="true"></i>
-              <span>Auditoria visual</span>
-            </span>
-            <div class="flex items-center gap-2">
-              <span
-                id="qa-score-pill"
-                class="font-mono-tech text-xs px-2 py-0.5 rounded bg-bg border border-border text-ivory"
-              ></span>
-              <i data-lucide="chevron-down" class="w-4 h-4 text-text-muted" aria-hidden="true"></i>
-            </div>
+      <!-- ================= ÁREA 4: SOCIAL FORMAT PACK & BRAND KIT ================= -->
+      <div id="view-pack" class="hidden flex flex-col gap-4">
+        <div class="pb-3 border-b border-border flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-lg font-bold text-ivory m-0 font-editorial">Social Format Pack & Brand Kit</h2>
+            <p class="text-xs text-text-muted m-0">Gere recortes proporcionais não destrutivos em 4:5, 9:16, 1:1 e 16:9 a partir da fotografia mestre atual.</p>
+          </div>
+          <button type="button" id="generate-pack-btn" class="lumen-btn-primary w-auto px-4 py-2 text-xs">
+            <i data-lucide="layers" class="w-4 h-4" aria-hidden="true"></i>
+            <span>Gerar Pacote Multiformato</span>
           </button>
+        </div>
 
-          <div id="accordion-panel-qa" class="lumen-accordion-body">
-            <div id="qa-content-available" class="pt-3 flex flex-col gap-3">
-              <div class="grid grid-cols-1 gap-2.5">
-                <div class="p-2.5 rounded-md bg-bg border border-border">
-                  <span class="block text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-1">
-                    Luz espacial 360° e sombras
-                  </span>
-                  <p id="qa-lighting-text" class="m-0 text-xs text-text-secondary leading-relaxed"></p>
-                </div>
-
-                <div class="p-2.5 rounded-md bg-bg border border-border">
-                  <span class="block text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-1">
-                    Enquadramento e foco
-                  </span>
-                  <p id="qa-lens-text" class="m-0 text-xs text-text-secondary leading-relaxed"></p>
-                </div>
-
-                <div class="p-2.5 rounded-md bg-bg border border-border">
-                  <span class="block text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-1">
-                    Percepção geral
-                  </span>
-                  <p id="qa-notes-text" class="m-0 text-xs text-text-secondary leading-relaxed"></p>
-                </div>
-
-                <div
-                  id="qa-suggestion-box"
-                  class="hidden p-3 rounded-md bg-surface-active border border-border-strong flex flex-col gap-2"
-                >
-                  <div class="flex items-center justify-between gap-2">
-                    <span class="text-[11px] font-semibold uppercase tracking-wider text-accent">
-                      Sugestão da curadoria para próxima tomada
-                    </span>
-                    <button
-                      type="button"
-                      id="apply-qa-suggestion-btn"
-                      class="lumen-btn-secondary py-1 px-2.5 text-xs"
-                      style="border-color: var(--color-accent); color: var(--color-accent);"
-                    >
-                      <span>Aplicar sugestão</span>
-                    </button>
-                  </div>
-                  <p id="qa-suggestion-text" class="m-0 text-xs text-ivory leading-relaxed"></p>
-                </div>
-              </div>
-
-              <p class="m-0 text-[11px] text-text-muted italic">
-                Estimativa técnica automatizada via visão computacional.
-              </p>
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+          <div class="lg:col-span-1 p-3 rounded-lg bg-surface border border-border flex flex-col gap-3">
+            <span class="text-xs font-bold text-ivory uppercase tracking-wider">Convenção de Marca</span>
+            <div>
+              <label class="text-[11px] text-text-secondary block mb-1">Nome do Pacote:</label>
+              <input type="text" id="pack-project-name" value="lumen-campaign" class="w-full bg-bg border border-border rounded px-2.5 py-1.5 text-xs text-ivory" />
             </div>
-
-            <div id="qa-content-unavailable" class="hidden pt-3 flex flex-col gap-2">
-              <div class="p-3 rounded-md bg-bg border border-border text-xs text-text-secondary">
-                Auditoria indisponível
+            <div>
+              <label class="text-[11px] text-text-secondary block mb-1">Formato de Saída:</label>
+              <select id="pack-output-format" class="w-full bg-bg border border-border rounded px-2.5 py-1.5 text-xs text-ivory">
+                <option value="JPEG">JPEG 4:4:4 (Máxima Nitidez)</option>
+                <option value="PNG">PNG Sem Perdas</option>
+                <option value="WEBP">WebP Moderno</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-[11px] text-text-secondary block mb-1">Template de Nomes:</label>
+              <input type="text" id="pack-naming-template" value="{project}_{format}_{version}" class="w-full bg-bg border border-border rounded px-2.5 py-1.5 text-xs font-mono text-ivory" />
+            </div>
+          </div>
+          <div class="lg:col-span-3">
+            <div id="social-pack-results-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div class="p-8 text-center text-xs text-text-muted border border-dashed border-border rounded-lg col-span-full">
+                Abra ou gere uma fotografia no Studio e clique em <strong>Gerar Pacote Multiformato</strong> para adaptar a imagem em 4:5, 9:16, 1:1 e 16:9 sem distorção.
               </div>
-              <p class="m-0 text-[11px] text-text-muted italic">
-                Estimativa técnica automatizada via visão computacional.
-              </p>
             </div>
           </div>
         </div>
-      </section>
+      </div>
+
+      <!-- ================= ÁREA 5: HISTÓRICO & GERENCIADOR DE JOBS ================= -->
+      <div id="view-history" class="hidden flex flex-col gap-4">
+        <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-border">
+          <div>
+            <h2 class="text-lg font-bold text-ivory m-0 font-editorial">Histórico de Produções & Jobs</h2>
+            <p class="text-xs text-text-muted m-0">Acompanhe tarefas autoritativas de geração, status de provedor e recupere versões passadas.</p>
+          </div>
+          <button type="button" id="clear-all-history-btn" class="lumen-btn-secondary text-xs text-danger">
+            Limpar histórico local
+          </button>
+        </div>
+        <div id="jobs-table-container" class="flex flex-col gap-2"></div>
+      </div>
 
     </main>
   </div>
 
-  <!-- DRAWER LATERAL DE HISTÓRICO LOCAL (INDEXEDDB) -->
-  <div
-    id="history-drawer-backdrop"
-    class="lumen-drawer-backdrop hidden"
-    aria-hidden="true"
-  ></div>
-
-  <aside
-    id="history-drawer"
-    class="lumen-drawer hidden"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="history-drawer-title"
-  >
-    <div class="p-4 border-b border-border flex items-center justify-between">
-      <div class="flex items-center gap-2">
-        <i data-lucide="archive" class="w-4 h-4 text-text-secondary" aria-hidden="true"></i>
-        <h2 id="history-drawer-title" class="text-sm font-semibold text-ivory m-0">
-          Histórico de Produções
-        </h2>
-      </div>
-      <div class="flex items-center gap-2">
-        <button
-          type="button"
-          id="clear-history-btn"
-          class="lumen-btn-secondary py-1 px-2.5 text-xs text-text-secondary"
-          aria-label="Limpar todo o histórico"
-        >
-          Limpar tudo
-        </button>
-        <button
-          type="button"
-          id="close-history-btn"
-          class="lumen-btn-secondary p-1.5"
-          aria-label="Fechar histórico"
-        >
-          <i data-lucide="x" class="w-4 h-4" aria-hidden="true"></i>
-        </button>
-      </div>
-    </div>
-
-    <div class="px-4 py-2.5 bg-surface border-b border-border flex items-center gap-2 text-xs text-text-secondary">
-      <i data-lucide="hard-drive" class="w-3.5 h-3.5 text-text-muted shrink-0" aria-hidden="true"></i>
-      <span>O histórico é armazenado exclusivamente neste navegador.</span>
-    </div>
-
-    <div
-      id="clear-confirm-box"
-      class="hidden px-4 py-3 bg-surface-active border-b border-border flex items-center justify-between gap-2"
-    >
-      <span class="text-xs text-warning">Confirmar exclusão de todo o histórico?</span>
-      <div class="flex items-center gap-1.5">
-        <button
-          type="button"
-          id="confirm-clear-yes"
-          class="px-2.5 py-1 rounded text-xs font-medium bg-danger text-accent-text"
-        >Excluir</button>
-        <button
-          type="button"
-          id="confirm-clear-no"
-          class="px-2.5 py-1 rounded text-xs bg-surface border border-border text-text-secondary"
-        >Cancelar</button>
-      </div>
-    </div>
-
-    <div id="history-list" class="p-4 flex-1 overflow-y-auto flex flex-col gap-3"></div>
-  </aside>
-
-  <!-- TOAST DISCRETO -->
-  <div
-    id="lumen-toast"
-    class="lumen-toast hidden"
-    role="status"
-    aria-live="polite"
-  >
-    <i data-lucide="check" class="w-4 h-4 text-accent" aria-hidden="true"></i>
-    <span id="lumen-toast-text">Prompt copiado.</span>
+  <!-- Toast Global -->
+  <div id="lumen-toast" class="lumen-toast hidden" role="status" aria-live="polite">
+    <i data-lucide="check-circle" class="w-4 h-4 text-accent" aria-hidden="true"></i>
+    <span id="lumen-toast-text"></span>
   </div>
 
   <!-- Scripts da Aplicação -->
-  <script src="/static/js/db.js?v=3.1"></script>
-  <script src="/static/js/app.js?v=3.1"></script>
+  <script src="/static/js/db.js?v=6.0"></script>
+  <script src="/static/js/app.js?v=6.0"></script>
 </body>
 </html>

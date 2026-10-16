@@ -1,41 +1,107 @@
 :root {
-  /* Paleta Principal LUMEN */
-  --color-bg: #101110;
-  --color-bg-elevated: #151714;
-  --color-surface: #1B1D19;
-  --color-surface-hover: #22251F;
-  --color-surface-active: #292D25;
-  --color-border: #30332C;
-  --color-border-strong: #45493F;
-  --color-text: #F3F1EA;
-  --color-text-secondary: #B7B9B0;
-  --color-text-muted: #85877F;
-  --color-accent: #D8FF63;
-  --color-accent-hover: #E3FF8A;
-  --color-accent-pressed: #C4EB4F;
-  --color-accent-text: #171A12;
-  --color-ivory: #F3F1EA;
-  --color-stone: #85877F;
+  color-scheme: dark;
 
-  /* Cores Semânticas */
-  --color-success: #9BE28C;
-  --color-warning: #F0C674;
-  --color-danger: #FF8178;
-  --color-info: #8FCBFF;
-  --color-focus: #D8FF63;
+  /* Tokens Oficiais LUMEN Studio 6.0 (Dark Editorial Studio) */
+  --bg: #0B0B0C;
+  --surface-1: #141416;
+  --surface-2: #1B1B1F;
+  --surface-3: #232329;
+  --ink: #EDEAE3;
+  --muted: #A09C94;
+  --line: #2B2A2F;
+  --accent: #E8B04A;
+  --accent-hover: #F2C36D;
+  --success: #79C99A;
+  --warning: #F0BE62;
+  --danger: #F17D79;
+  --focus: #F5CF82;
 
-  /* Raios e Sombras */
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 20px;
+  /* Mapeamento Semântico Compatível */
+  --color-bg: var(--bg);
+  --color-bg-elevated: var(--surface-1);
+  --color-surface: var(--surface-2);
+  --color-surface-hover: var(--surface-3);
+  --color-surface-active: #2A2A32;
+  --color-border: var(--line);
+  --color-border-strong: #3E3C46;
+  --color-text: var(--ink);
+  --color-text-secondary: #C6C2B9;
+  --color-text-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-pressed: #D19934;
+  --color-accent-text: #14120E;
+  --color-ivory: var(--ink);
+  --color-stone: var(--muted);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-info: #74B9FF;
+  --color-focus: var(--focus);
+
+  /* Espaçamento e Raios */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 22px;
   --radius-pill: 999px;
-  --shadow-panel: 0 8px 28px rgba(0, 0, 0, 0.18);
-  --shadow-overlay: 0 18px 60px rgba(0, 0, 0, 0.42);
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  --shadow-panel: 0 10px 30px rgba(0, 0, 0, 0.28);
+  --shadow-overlay: 0 20px 60px rgba(0, 0, 0, 0.52);
 
   /* Tipografia */
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-display: 'Cormorant Garamond', Georgia, serif;
+  --font-sans: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+
+  --bg: #F3F0E8;
+  --surface-1: #FFFFFF;
+  --surface-2: #F8F6F0;
+  --surface-3: #EEEAE1;
+  --ink: #1B1B1D;
+  --muted: #6F6B62;
+  --line: #DDD6C8;
+  --accent: #9A6612;
+  --accent-hover: #80530D;
+  --success: #246B43;
+  --warning: #80530D;
+  --danger: #A72E2A;
+  --focus: #80530D;
+
+  --color-bg: var(--bg);
+  --color-bg-elevated: var(--surface-1);
+  --color-surface: var(--surface-2);
+  --color-surface-hover: var(--surface-3);
+  --color-surface-active: #E5DFD3;
+  --color-border: var(--line);
+  --color-border-strong: #C5BCAE;
+  --color-text: var(--ink);
+  --color-text-secondary: #43403B;
+  --color-text-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-pressed: #6A4309;
+  --color-accent-text: #FFFFFF;
+  --color-ivory: var(--ink);
+  --color-stone: var(--muted);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-info: #1E6091;
+  --color-focus: var(--focus);
+
+  --shadow-panel: 0 8px 24px rgba(27, 27, 29, 0.06);
+  --shadow-overlay: 0 18px 48px rgba(27, 27, 29, 0.14);
 }
 
 *,
@@ -53,11 +119,10 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  color-scheme: dark;
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
-/* Foco Acessível WCAG 2.2 AA */
 :focus {
   outline: none;
 }
@@ -71,69 +136,150 @@ body {
   font-family: var(--font-mono);
 }
 
-/* Header Compacto (64px) */
+.font-editorial {
+  font-family: var(--font-display);
+}
+
+/* Header Compacto (60px) */
 .lumen-header {
-  height: 64px;
-  background-color: var(--color-bg);
+  height: 60px;
+  background-color: var(--color-bg-elevated);
   border-bottom: 1px solid var(--color-border);
-  padding: 0 24px;
+  padding: 0 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   position: sticky;
   top: 0;
-  z-index: 30;
+  z-index: 35;
 }
 
 .lumen-brand-wordmark {
-  font-size: 1.125rem;
+  font-family: var(--font-display);
+  font-size: 1.45rem;
   font-weight: 700;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.18em;
   color: var(--color-ivory);
   line-height: 1;
 }
 
 .lumen-brand-descriptor {
-  font-size: 0.6875rem;
-  font-weight: 500;
-  letter-spacing: 0.16em;
-  color: var(--color-text-muted);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: var(--color-accent);
   text-transform: uppercase;
 }
 
 .lumen-brand-slogan {
   font-size: 0.75rem;
   color: var(--color-text-muted);
-  font-style: normal;
   letter-spacing: 0.02em;
 }
 
-/* Layout Principal (Sidebar 360px + Workspace) */
-.lumen-layout {
+/* Shell Principal LUMEN 6.0: Nav Rail (68px) + Sidebar (372px) + Workspace */
+.lumen-shell {
   display: grid;
-  grid-template-columns: 364px minmax(0, 1fr);
-  min-height: calc(100vh - 64px);
+  grid-template-columns: 68px 376px minmax(0, 1fr);
+  min-height: calc(100vh - 60px);
 }
 
-@media (max-width: 1024px) {
-  .lumen-layout {
-    grid-template-columns: 1fr;
+.lumen-shell.is-full-view {
+  grid-template-columns: 68px minmax(0, 1fr);
+}
+
+@media (max-width: 1279px) {
+  .lumen-shell {
+    grid-template-columns: 64px 340px minmax(0, 1fr);
   }
 }
 
-/* Sidebar de Controles */
-.lumen-sidebar {
-  background-color: var(--color-bg);
-  border-right: 1px solid var(--color-border);
-  padding: 18px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  overflow-y: auto;
-  max-height: calc(100vh - 64px);
+@media (max-width: 1023px) {
+  .lumen-shell,
+  .lumen-shell.is-full-view {
+    grid-template-columns: 1fr;
+    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+  }
 }
 
-@media (max-width: 1024px) {
+/* Rail de Navegação de 5 Áreas (Desktop/Tablet Lateral, Mobile Inferior) */
+.lumen-nav-rail {
+  background-color: var(--color-bg-elevated);
+  border-right: 1px solid var(--color-border);
+  padding: 12px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  z-index: 30;
+}
+
+.lumen-nav-btn {
+  appearance: none;
+  width: 56px;
+  min-height: 50px;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-text-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 4px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+
+.lumen-nav-btn:hover {
+  background-color: var(--color-surface);
+  color: var(--color-ivory);
+}
+
+.lumen-nav-btn.is-active {
+  background-color: var(--color-surface-active);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+@media (max-width: 1023px) {
+  .lumen-nav-rail {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: calc(62px + env(safe-area-inset-bottom, 0px));
+    padding: 4px 8px calc(4px + env(safe-area-inset-bottom, 0px)) 8px;
+    border-right: none;
+    border-top: 1px solid var(--color-border-strong);
+    flex-direction: row;
+    justify-content: space-around;
+    background-color: var(--color-bg-elevated);
+  }
+
+  .lumen-nav-btn {
+    width: auto;
+    flex: 1;
+    min-height: 46px;
+  }
+}
+
+/* Sidebar de Direção do Studio */
+.lumen-sidebar {
+  background-color: var(--color-bg-elevated);
+  border-right: 1px solid var(--color-border);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  max-height: calc(100vh - 60px);
+}
+
+@media (max-width: 1023px) {
   .lumen-sidebar {
     max-height: none;
     border-right: none;
@@ -141,19 +287,57 @@ body {
   }
 }
 
-.lumen-section-label {
-  display: block;
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-text-secondary);
-  margin-bottom: 6px;
+/* Abas Contextuais do Painel de Controle (Luz | Câmera | Sujeito | Estilo) */
+.lumen-control-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  background-color: var(--color-bg);
+  padding: 4px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
 }
 
-/* PALCO DE LUZ ESPACIAL 360° (RADAR INTERATIVO) */
+.lumen-control-tab {
+  appearance: none;
+  min-height: 36px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 0.73rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  transition: all 120ms ease;
+}
+
+.lumen-control-tab:hover {
+  color: var(--color-ivory);
+}
+
+.lumen-control-tab.is-active {
+  background-color: var(--color-surface-active);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.lumen-section-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  margin-bottom: 4px;
+}
+
+/* PALCO DE LUZ ESPACIAL 360° */
 .lumen-light-stage-box {
-  background-color: var(--color-bg-elevated);
+  background-color: var(--color-bg);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-lg);
   padding: 12px;
@@ -172,8 +356,8 @@ body {
 }
 
 #light-stage-canvas {
-  width: 230px;
-  height: 230px;
+  width: 224px;
+  height: 224px;
   cursor: grab;
   touch-action: none;
   border-radius: 50%;
@@ -183,10 +367,45 @@ body {
   cursor: grabbing;
 }
 
+/* Seletor de Fonte no Radar (Key | Rim | Fill) */
+.lumen-source-selector {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+}
+
+.lumen-source-pill {
+  appearance: none;
+  min-height: 34px;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  transition: all 120ms ease;
+}
+
+.lumen-source-pill.is-selected {
+  border-color: var(--color-accent);
+  background-color: var(--color-surface-active);
+  color: var(--color-ivory);
+}
+
+.lumen-source-pill.is-disabled-light {
+  opacity: 0.55;
+}
+
 .lumen-color-swatch {
   appearance: none;
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   border: 2px solid var(--color-border-strong);
   cursor: pointer;
@@ -199,31 +418,26 @@ body {
 
 .lumen-color-swatch.is-selected {
   border-color: var(--color-accent);
-  transform: scale(1.15);
+  transform: scale(1.16);
 }
 
-/* Textarea do Briefing Criativo */
 .lumen-textarea {
   width: 100%;
-  min-height: 98px;
+  min-height: 84px;
   resize: vertical;
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  padding: 11px 12px;
+  padding: 10px 12px;
   color: var(--color-text);
   font-family: var(--font-sans);
-  font-size: 0.85rem;
-  line-height: 1.5;
+  font-size: 0.84rem;
+  line-height: 1.48;
   transition: border-color 140ms ease, background-color 140ms ease;
 }
 
 .lumen-textarea::placeholder {
   color: var(--color-text-muted);
-}
-
-.lumen-textarea:hover:not(:disabled) {
-  border-color: var(--color-border-strong);
 }
 
 .lumen-textarea:focus {
@@ -235,16 +449,20 @@ body {
   border-color: var(--color-warning);
 }
 
-/* Pílulas e Exemplos em Linguagem Natural */
 .lumen-natural-chip {
   appearance: none;
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-pill);
-  padding: 4px 9px;
+  padding: 5px 10px;
+  min-height: 28px;
   font-size: 0.71rem;
+  font-weight: 500;
   color: var(--color-text-secondary);
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
 }
 
@@ -254,17 +472,17 @@ body {
   color: var(--color-ivory);
 }
 
-.lumen-natural-chip:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
+.lumen-natural-chip.is-active {
+  background-color: var(--color-surface-active);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
 }
 
-/* Dropzone de Foto de Referência Visual */
 .lumen-ref-dropzone {
   background-color: var(--color-surface);
   border: 1px dashed var(--color-border-strong);
   border-radius: var(--radius-md);
-  padding: 9px 11px;
+  padding: 10px 12px;
   cursor: pointer;
   transition: border-color 140ms ease, background-color 140ms ease;
 }
@@ -275,7 +493,6 @@ body {
   border-color: var(--color-accent);
 }
 
-/* Toggle de Modo Prova de Estúdio (Contact Sheet) */
 .lumen-toggle-card {
   appearance: none;
   width: 100%;
@@ -293,11 +510,6 @@ body {
   transition: background-color 140ms ease, border-color 140ms ease;
 }
 
-.lumen-toggle-card:hover:not(:disabled) {
-  background-color: var(--color-surface-hover);
-  border-color: var(--color-border-strong);
-}
-
 .lumen-toggle-card[aria-pressed="true"] {
   background-color: var(--color-surface-active);
   border-color: var(--color-accent);
@@ -308,9 +520,6 @@ body {
   height: 15px;
   border-radius: var(--radius-pill);
   border: 1.5px solid var(--color-border-strong);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   flex-shrink: 0;
 }
 
@@ -319,53 +528,49 @@ body {
   background-color: var(--color-accent);
 }
 
-/* Botão Primário Proprietário (48px de altura, #D8FF63) */
+/* Botões Primários e Secundários (Min 44px em toque) */
 .lumen-btn-primary {
-  height: 48px;
+  min-height: 46px;
   width: 100%;
   background-color: var(--color-accent);
   color: var(--color-accent-text);
   border: 1px solid transparent;
   border-radius: var(--radius-md);
-  font-size: 0.875rem;
-  font-weight: 600;
+  font-size: 0.86rem;
+  font-weight: 700;
   letter-spacing: 0.01em;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   cursor: pointer;
-  transition: background-color 140ms ease, transform 80ms ease, opacity 140ms ease;
+  transition: background-color 140ms ease, opacity 140ms ease;
 }
 
 .lumen-btn-primary:hover:not(:disabled) {
   background-color: var(--color-accent-hover);
 }
 
-.lumen-btn-primary:active:not(:disabled) {
-  background-color: var(--color-accent-pressed);
-}
-
 .lumen-btn-primary:disabled {
   background-color: var(--color-surface-active);
-  color: var(--color-text-secondary);
+  color: var(--color-text-muted);
   border-color: var(--color-border-strong);
   cursor: not-allowed;
 }
 
-/* Botões Secundários */
 .lumen-btn-secondary {
+  min-height: 36px;
   background-color: var(--color-surface);
   color: var(--color-text);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  padding: 8px 14px;
-  font-size: 0.8125rem;
-  font-weight: 500;
+  padding: 6px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   cursor: pointer;
   transition: background-color 140ms ease, border-color 140ms ease;
 }
@@ -380,14 +585,32 @@ body {
   cursor: not-allowed;
 }
 
-/* Workspace Principal (Image First) */
+/* Workspace Principal e Barra de Ferramentas do Canvas */
 .lumen-workspace {
   background-color: var(--color-bg);
-  padding: 24px;
+  padding: 18px 22px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
   overflow-y: auto;
+}
+
+@media (max-width: 640px) {
+  .lumen-workspace {
+    padding: 12px;
+  }
+}
+
+.lumen-canvas-toolbar {
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .lumen-stage {
@@ -395,7 +618,7 @@ body {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-panel);
-  min-height: 520px;
+  min-height: 510px;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -403,28 +626,102 @@ body {
   justify-content: center;
   position: relative;
   overflow: hidden;
-  padding: 22px;
+  padding: 18px;
+}
+
+.lumen-stage.is-checkerboard {
+  background-image:
+    linear-gradient(45deg, var(--color-surface) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--color-surface) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--color-surface) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--color-surface) 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0;
 }
 
 .lumen-photo-viewport {
   width: 100%;
   height: 100%;
-  max-height: 65vh;
+  max-height: 64vh;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
+  overflow: hidden;
 }
 
 .lumen-photo-img {
   max-width: 100%;
-  max-height: 63vh;
+  max-height: 62vh;
   width: auto;
   height: auto;
   object-fit: contain;
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-overlay);
   display: block;
+  transition: transform 120ms ease;
+}
+
+/* COMPARADOR ANTES / DEPOIS (SPLIT SLIDER E SIDE-BY-SIDE) */
+.lumen-split-container {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  max-height: 62vh;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  user-select: none;
+}
+
+.lumen-split-before-wrap {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.lumen-split-divider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background-color: var(--color-accent);
+  cursor: ew-resize;
+  z-index: 15;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.7);
+}
+
+.lumen-split-handle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background-color: var(--color-bg-elevated);
+  border: 2px solid var(--color-accent);
+  color: var(--color-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-panel);
+}
+
+.lumen-side-by-side-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  width: 100%;
+  align-items: center;
+}
+
+@media (max-width: 640px) {
+  .lumen-side-by-side-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Tira de Prova de Estúdio (Contact Sheet) */
@@ -450,22 +747,17 @@ body {
   transition: border-color 140ms ease, background-color 140ms ease;
 }
 
-.lumen-contact-card:hover {
-  background-color: var(--color-surface-hover);
-  border-color: var(--color-border-strong);
-}
-
 .lumen-contact-card.is-active {
   background-color: var(--color-surface-active);
   border-color: var(--color-accent);
 }
 
-/* Sliders do Laboratório Darkroom */
+/* Sliders */
 .lumen-slider {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
-  height: 4px;
+  height: 5px;
   background: var(--color-border-strong);
   border-radius: var(--radius-pill);
 }
@@ -473,16 +765,12 @@ body {
 .lumen-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
-  background: var(--color-ivory);
-  border: 2px solid var(--color-bg);
-  cursor: pointer;
-}
-
-.lumen-slider:focus::-webkit-slider-thumb {
   background: var(--color-accent);
+  border: 2px solid var(--color-bg-elevated);
+  cursor: pointer;
 }
 
 /* Etapas Reais do Pipeline */
@@ -495,7 +783,6 @@ body {
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
   color: var(--color-text-muted);
-  transition: border-color 160ms ease, color 160ms ease, background-color 160ms ease;
 }
 
 .lumen-step-item.is-active {
@@ -537,15 +824,14 @@ body {
   width: 100%;
   background: transparent;
   border: none;
-  padding: 14px 18px;
+  padding: 13px 16px;
   color: var(--color-text);
   display: flex;
   align-items: center;
   justify-content: space-between;
   cursor: pointer;
-  font-size: 0.875rem;
+  font-size: 0.84rem;
   font-weight: 600;
-  transition: background-color 140ms ease;
 }
 
 .lumen-accordion-trigger:hover {
@@ -553,17 +839,17 @@ body {
 }
 
 .lumen-accordion-body {
-  padding: 0 18px 18px 18px;
+  padding: 0 16px 16px 16px;
   border-top: 1px solid var(--color-border);
 }
 
-/* Drawer Lateral de Histórico */
+/* Drawer Lateral */
 .lumen-drawer-backdrop {
   position: fixed;
   inset: 0;
-  background-color: rgba(16, 17, 16, 0.72);
+  background-color: rgba(11, 11, 12, 0.72);
   backdrop-filter: blur(2px);
-  z-index: 40;
+  z-index: 45;
 }
 
 .lumen-drawer {
@@ -572,7 +858,7 @@ body {
   right: 0;
   bottom: 0;
   width: 100%;
-  max-width: 420px;
+  max-width: 440px;
   background-color: var(--color-bg-elevated);
   border-left: 1px solid var(--color-border-strong);
   box-shadow: var(--shadow-overlay);
@@ -588,16 +874,24 @@ body {
   right: 24px;
   background-color: var(--color-surface-active);
   color: var(--color-ivory);
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid var(--color-accent);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-overlay);
   padding: 10px 16px;
   font-size: 0.8125rem;
-  font-weight: 500;
-  z-index: 60;
+  font-weight: 600;
+  z-index: 70;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+}
+
+@media (max-width: 1023px) {
+  .lumen-toast {
+    bottom: calc(74px + env(safe-area-inset-bottom, 0px));
+    right: 14px;
+    left: 14px;
+  }
 }
 
 ::-webkit-scrollbar {

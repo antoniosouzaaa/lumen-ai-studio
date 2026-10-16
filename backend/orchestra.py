@@ -1,13 +1,16 @@
 import asyncio
 import base64
+import hashlib
 import io
 import json
 import logging
+import math
 import os
 import random
 import re
-import urllib.parse
-from typing import AsyncGenerator, Dict, Any, List, Literal, Optional
+import time
+import uuid
+from typing import Any, AsyncGenerator, Dict, List, Literal, Optional, Tuple
 
 import httpx
 from dotenv import load_dotenv
@@ -43,6 +46,16 @@ FORBIDDEN_BUZZWORDS = [
     r"\bbest quality\b",
 ]
 
+JobStatusLiteral = Literal[
+    "queued",
+    "preparing",
+    "running",
+    "finalizing",
+    "succeeded",
+    "failed",
+    "canceled",
+]
+
 
 class LightSourceSpec(BaseModel):
     enabled: bool = True
@@ -62,7 +75,14 @@ class LightSourceSpec(BaseModel):
         default="Sol Dourado",
         description="Temperatura ou cor escolhida para a fonte luminosa.",
     )
-    intensity: int = Field(default=85, ge=10, le=100)
+    intensity: int = Field(default=85, ge=0, le=100)
+    softness: int = Field(
+        default=55,
+        ge=0,
+        le=100,
+        description="Maciez relativa do modificador de luz (0-25: dura, 26-60: softbox médio, 61-100: grande difusa).",
+    )
+    color_hex: Optional[str] = None
 
 
 class SpatialLightingRig(BaseModel):
@@ -74,6 +94,17 @@ class SpatialLightingRig(BaseModel):
             distance_pct=78,
             color_label="Frio Noturno",
             intensity=60,
+            softness=40,
+        )
+    )
+    fill_light: Optional[LightSourceSpec] = Field(
+        default_factory=lambda: LightSourceSpec(
+            enabled=True,
+            angle_deg=45,
+            distance_pct=55,
+            color_label="Luz do Dia",
+            intensity=28,
+            softness=85,
         )
     )
     spatial_summary: str = Field(
@@ -84,20 +115,87 @@ class SpatialLightingRig(BaseModel):
         default=False,
         description="True quando o usuário moveu os refletores no Radar 360° para reiluminar a foto atual.",
     )
+    schema_version: int = 1
+
+
+class ReferenceItemSpec(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4())[:8])
+    role: str = Field(
+        default="style",
+        description="Papel da referência: identity, product, apparel, brand_logo, background, palette, style.",
+    )
+    label: str = Field(default="Referência visual")
+    image_base64: str
+    mime_type: str = "image/jpeg"
 
 
 class ProductionRequest(BaseModel):
-    brief: str = Field(..., min_length=1, max_length=3000)
+    brief: str = Field(default="", max_length=3000)
+    prompt: Optional[str] = Field(default=None, max_length=3000)
     lens: Optional[str] = None
     aperture: Optional[str] = None
     film: Optional[str] = None
     aspect_ratio: Optional[str] = None
+    depth_of_field: Optional[Literal["shallow", "balanced", "deep"]] = None
+    framing_intent: Optional[Literal["preserve", "closer", "wider", "center"]] = None
     lighting_rig: Optional[SpatialLightingRig] = None
+    lighting: Optional[SpatialLightingRig] = None
     previous_prompt: Optional[str] = None
     refinement_instruction: Optional[str] = None
     reference_image_base64: Optional[str] = None
     reference_mime_type: Optional[str] = "image/jpeg"
+    references: List[ReferenceItemSpec] = Field(default_factory=list)
+    preserve_categories: List[str] = Field(default_factory=list)
+    locks: List[str] = Field(default_factory=list)
+    lock_strength: Literal["light", "balanced", "strict"] = "balanced"
     contact_sheet: bool = False
+    idempotency_key: Optional[str] = None
+    project_id: Optional[str] = None
+    source_asset_id: Optional[str] = None
+    parent_version_id: Optional[str] = None
+
+
+class ReferenceAnalysisRequest(BaseModel):
+    image_base64: str
+    mime_type: str = "image/jpeg"
+
+
+class ReferenceAnalysisOutput(BaseModel):
+    key_direction_estimate: str
+    estimated_angle_deg: int = Field(default=315, ge=0, le=359)
+    estimated_distance_pct: int = Field(default=65, ge=15, le=100)
+    relative_softness: str
+    estimated_softness_pct: int = Field(default=55, ge=0, le=100)
+    apparent_temperature: str
+    estimated_color_label: str = "Sol Dourado"
+    contrast_level: str
+    fill_and_rim_estimate: str
+    confidence: float = Field(default=0.72, ge=0.0, le=1.0)
+    is_heuristic_fallback: bool = False
+    caveats: str
+
+
+class FormatCropSpec(BaseModel):
+    aspect_ratio: Literal["4:5", "9:16", "1:1", "16:9"]
+    offset_x_pct: float = Field(default=0.0, ge=-0.5, le=0.5)
+    offset_y_pct: float = Field(default=0.0, ge=-0.5, le=0.5)
+
+
+class SocialPackRequest(BaseModel):
+    source_image_base64: str
+    project_name: str = "lumen-campaign"
+    version_tag: str = "v1"
+    naming_template: str = "{project}_{format}_{version}"
+    output_format: Literal["JPEG", "PNG", "WEBP"] = "JPEG"
+    quality: int = Field(default=96, ge=60, le=100)
+    formats: List[FormatCropSpec] = Field(
+        default_factory=lambda: [
+            FormatCropSpec(aspect_ratio="4:5"),
+            FormatCropSpec(aspect_ratio="9:16"),
+            FormatCropSpec(aspect_ratio="1:1"),
+            FormatCropSpec(aspect_ratio="16:9"),
+        ]
+    )
 
 
 class VariationPrompt(BaseModel):
@@ -137,11 +235,231 @@ class QAOutput(BaseModel):
     improvement_suggestion: str = Field(default="")
 
 
+# ==============================================================================
+# GERENCIADOR AUTORITATIVO DE JOBS E IDEMPOTÊNCIA (FASE 3 - LUMEN 6.0)
+# ==============================================================================
+
+class JobRecord(BaseModel):
+    job_id: str
+    idempotency_key: Optional[str] = None
+    project_id: Optional[str] = None
+    parent_version_id: Optional[str] = None
+    status: JobStatusLiteral = "queued"
+    status_message: str = "Na fila de processamento"
+    created_at: float = Field(default_factory=time.time)
+    updated_at: float = Field(default_factory=time.time)
+    elapsed_ms: int = 0
+    provider_used: Optional[str] = None
+    fallback_occurred: bool = False
+    preserve_categories: List[str] = Field(default_factory=list)
+    locks_applied: List[str] = Field(default_factory=list)
+    honest_limitations: List[str] = Field(default_factory=list)
+    error: Optional[str] = None
+    canceled: bool = False
+    result_metadata: Optional[Dict[str, Any]] = None
+
+
+JOB_STORE: Dict[str, JobRecord] = {}
+IDEMPOTENCY_INDEX: Dict[str, str] = {}
+MAX_STORED_JOBS = 120
+
+
+def create_or_get_job(params: ProductionRequest) -> Tuple[JobRecord, bool]:
+    """
+    Cria ou recupera um Job existente caso a mesma idempotency_key já tenha sido enviada.
+    Retorna (JobRecord, is_duplicate).
+    """
+    idem_key = (params.idempotency_key or "").strip() or None
+    if idem_key and idem_key in IDEMPOTENCY_INDEX:
+        existing_id = IDEMPOTENCY_INDEX[idem_key]
+        if existing_id in JOB_STORE:
+            existing_job = JOB_STORE[existing_id]
+            if existing_job.status in ("queued", "preparing", "running", "finalizing", "succeeded"):
+                return existing_job, True
+
+    if len(JOB_STORE) >= MAX_STORED_JOBS:
+        oldest_key = sorted(JOB_STORE.keys(), key=lambda k: JOB_STORE[k].created_at)[0]
+        removed = JOB_STORE.pop(oldest_key, None)
+        if removed and removed.idempotency_key:
+            IDEMPOTENCY_INDEX.pop(removed.idempotency_key, None)
+
+    job_id = f"job_{uuid.uuid4().hex[:12]}"
+    limitations: List[str] = []
+    if "lighting_only" in params.locks:
+        limitations.append(
+            "Edição 'Apenas Iluminação' é conduzida via instrução direcional de prompt e preservação semântica; pequenas variações de textura podem ocorrer no modelo gerador."
+        )
+    if params.preserve_categories:
+        limitations.append(
+            f"Preservação ativa ({', '.join(params.preserve_categories)}) guiada por referência visual multimodal; fidelidade exata de pixel não é garantida sem máscara de inpainting."
+        )
+
+    record = JobRecord(
+        job_id=job_id,
+        idempotency_key=idem_key,
+        project_id=params.project_id,
+        parent_version_id=params.parent_version_id,
+        status="queued",
+        status_message="Job registrado na fila",
+        preserve_categories=list(params.preserve_categories),
+        locks_applied=list(params.locks),
+        honest_limitations=limitations,
+    )
+    JOB_STORE[job_id] = record
+    if idem_key:
+        IDEMPOTENCY_INDEX[idem_key] = job_id
+    return record, False
+
+
+def update_job_state(
+    job_id: str,
+    status: JobStatusLiteral,
+    message: str,
+    provider_used: Optional[str] = None,
+    fallback_occurred: Optional[bool] = None,
+    error: Optional[str] = None,
+    result_metadata: Optional[Dict[str, Any]] = None,
+) -> Optional[JobRecord]:
+    rec = JOB_STORE.get(job_id)
+    if not rec:
+        return None
+    now = time.time()
+    rec.status = status
+    rec.status_message = message
+    rec.updated_at = now
+    rec.elapsed_ms = int(round((now - rec.created_at) * 1000))
+    if provider_used is not None:
+        rec.provider_used = provider_used
+    if fallback_occurred is not None:
+        rec.fallback_occurred = fallback_occurred
+    if error is not None:
+        rec.error = error
+    if result_metadata is not None:
+        rec.result_metadata = result_metadata
+    return rec
+
+
+def get_job(job_id: str) -> Optional[JobRecord]:
+    rec = JOB_STORE.get(job_id)
+    if rec and rec.status in ("queued", "preparing", "running", "finalizing"):
+        rec.elapsed_ms = int(round((time.time() - rec.created_at) * 1000))
+    return rec
+
+
+def list_jobs(limit: int = 40) -> List[JobRecord]:
+    items = sorted(JOB_STORE.values(), key=lambda j: j.created_at, reverse=True)
+    return items[:limit]
+
+
+def cancel_job(job_id: str) -> Optional[JobRecord]:
+    rec = JOB_STORE.get(job_id)
+    if not rec:
+        return None
+    if rec.status in ("succeeded", "failed", "canceled"):
+        return rec
+    rec.canceled = True
+    return update_job_state(
+        job_id,
+        "canceled",
+        "Operação cancelada pelo usuário.",
+    )
+
+
+# ==============================================================================
+# SISTEMA DE ILUMINAÇÃO 3 FONTES, MACIEZ E RAZÃO KEY:FILL (FASE 2 - LUMEN 6.0)
+# ==============================================================================
+
+def map_softness_to_prompt_en(softness: int) -> str:
+    """
+    Mapeia o valor numérico de maciez (0-100) em descrições ópticas de modificadores:
+    - 0 a 25: fonte dura, bordas de sombra nítidas.
+    - 26 a 60: softbox médio, transição gradual.
+    - 61 a 100: fonte grande e difusa, sombras suaves.
+    """
+    s = max(0, min(100, int(softness)))
+    if s <= 25:
+        return "hard direct light modifier producing crisp, sharp-edged shadow transitions"
+    if s <= 60:
+        return "medium softbox modifier with a balanced, gradual shadow falloff"
+    return "large double-diffused octabox modifier producing soft, wrapping shadows"
+
+
+def compute_key_fill_ratio(rig: SpatialLightingRig) -> str:
+    """
+    Calcula a relação aproximada Key:Fill derivada dos controles de intensidade do LUMEN.
+    Não alega medição fotométrica física em lux/EV.
+    """
+    key_active = rig.key_light.enabled and rig.key_light.intensity > 0
+    if not key_active:
+        return "Luz Principal desligada (0:1 · estimativa aproximada)"
+
+    fill = rig.fill_light
+    fill_intensity = fill.intensity if (fill and fill.enabled and fill.intensity > 0) else 0
+    if fill_intensity == 0:
+        return f"{rig.key_light.intensity}:0 · Sem preenchimento (alto contraste · estimativa aproximada)"
+
+    ratio = round(max(1.0, (rig.key_light.intensity + fill_intensity) / float(fill_intensity)), 1)
+    return f"{ratio}:1 (estimativa aproximada dos controles LUMEN)"
+
+
+def normalize_light_source_dict(src: Optional[LightSourceSpec]) -> Dict[str, Any]:
+    if src is None:
+        return {
+            "enabled": False,
+            "angle_deg": 0,
+            "distance_pct": 50,
+            "color_label": "daylight",
+            "intensity": 0,
+            "softness": 50,
+        }
+    color_norm_map = {
+        "luz do dia": "daylight",
+        "daylight": "daylight",
+        "sol dourado": "golden",
+        "golden": "golden",
+        "tungstênio âmbar": "tungsten",
+        "tungsten": "tungsten",
+        "frio noturno": "cool",
+        "cool": "cool",
+        "rosa crepúsculo": "pink",
+        "pink": "pink",
+        "personalizada": "custom",
+        "custom": "custom",
+    }
+    raw_label = (src.color_label or "daylight").strip().lower()
+    norm_color = color_norm_map.get(raw_label, raw_label)
+    active = bool(src.enabled and src.intensity > 0)
+    return {
+        "enabled": active,
+        "angle_deg": int(src.angle_deg) % 360 if active else 0,
+        "distance_pct": int(src.distance_pct) if active else 50,
+        "color_label": norm_color if active else "none",
+        "intensity": int(src.intensity) if active else 0,
+        "softness": int(src.softness) if active else 50,
+        "color_hex": (src.color_hex or "").upper() if active and src.color_hex else None,
+    }
+
+
+def normalize_rig_dict(rig: SpatialLightingRig) -> Dict[str, Any]:
+    """
+    Normalização canônica estável para comparação de dirty state entre rigs.
+    """
+    return {
+        "key_light": normalize_light_source_dict(rig.key_light),
+        "rim_light": normalize_light_source_dict(rig.rim_light),
+        "fill_light": normalize_light_source_dict(rig.fill_light),
+    }
+
+
+def are_rigs_equal(rig_a: SpatialLightingRig, rig_b: SpatialLightingRig) -> bool:
+    return normalize_rig_dict(rig_a) == normalize_rig_dict(rig_b)
+
+
 DIRECTOR_SYSTEM_PROMPT = """Você é o Diretor de Fotografia Sênior do estúdio LUMEN: AI PHOTOGRAPHY STUDIO.
 PADRÃO DE QUALIDADE EXIGIDO: Fotografia publicitária, documental e comercial de campanha global (nível Nike, Adidas, UEFA, Vogue, Leica/Phase One), indistinguível de uma fotografia RAW real capturada em ambiente 100% controlado (seja em estúdio fechado ou em locação cinematográfica controlada como um estádio ao crepúsculo), com textura óptica autêntica, geometria impecável sem distorções e profundidade de campo natural.
 
 SUA MISSÃO PRINCIPAL:
-Traduzir com precisão absoluta a GEOMETRIA ESPACIAL DA LUZ definida pelo usuário no Radar 360° somada à descrição em linguagem natural:
+Traduzir com precisão absoluta a GEOMETRIA ESPACIAL DA LUZ (Luz Principal/Key, Contraluz/Rim e Preenchimento/Fill + Maciez dos modificadores) definida pelo usuário no Radar 360° somada à descrição em linguagem natural:
 - Convenção de ângulos do Radar 360° (vistos da câmera olhando para o sujeito):
   - 0° / 360° = Luz Frontal direta (a partir do eixo da câmera).
   - 30° a 60° = Luz a 45° pela DIREITA da câmera (Rembrandt lighting on the right side of frame, casting controlled shadow toward the left side).
@@ -170,9 +488,9 @@ QA_SYSTEM_PROMPT = """Você é o Curador e Auditor Óptico do LUMEN: AI PHOTOGRA
 Analise a fotografia gerada verificando especialmente o nível de controle de estúdio, nitidez óptica, ausência de distorções geométricas e se a DIREÇÃO ESPACIAL DA LUZ (definida no Palco de Luz 360°) foi respeitada.
 
 Escreva em PORTUGUÊS BRASILEIRO com linguagem clara, natural e acessível:
-1. `lighting`: avalie a precisão da direção da luz principal, contraluz e controle de sombras de estúdio.
-2. `lens_coherence`: como ficou o enquadramento, a geometria óptica e o desfoque de fundo.
-3. `notes`: percepção geral sobre a textura tátil, nitidez e acabamento de estúdio controlado.
+1. `lighting`: avalie a precisão da direção da luz principal, preenchimento, contraluz e controle de sombras.
+2. `lens_coherence`: como ficou o enquadramento, a geometria óptica e a profundidade de campo.
+3. `notes`: percepção geral sobre a textura tátil, nitidez e acabamento fotográfico.
 4. `improvement_suggestion`: uma sugestão prática em linguagem natural para testar na próxima tomada ou reiluminação.
 5. `score`: nota de 0.0 a 10.0."""
 
@@ -186,27 +504,27 @@ def sanitize_prompt(prompt: str) -> str:
     return cleaned.strip(" ,")
 
 
-def describe_light_vector_en(light: LightSourceSpec, role: str) -> str:
-    if not light.enabled:
-        return f"No {role} (single source controlled lighting with deep negative fill flags on the shadow side)."
+def describe_light_vector_en(light: Optional[LightSourceSpec], role: str) -> str:
+    if not light or not light.enabled or light.intensity <= 0:
+        return f"No {role} (switched off; deep natural shadow contrast on that axis)."
 
     angle = light.angle_deg % 360
     if angle <= 25 or angle >= 335:
-        dir_en = "directly from the front (on-axis beauty dish light)"
+        dir_en = "directly from the front (0-degree on-axis camera position)"
     elif 25 < angle <= 68:
-        dir_en = "from 45-degrees camera-right (precision softbox illuminating the right side of the subject, casting clean controlled shadows to the left)"
+        dir_en = "from 45-degrees camera-right (illuminating the right side of the subject, casting clean shadows to the left)"
     elif 68 < angle <= 112:
-        dir_en = "from 90-degrees hard side camera-right (dramatic split lighting from the right edge, left side in deep controlled shadow)"
+        dir_en = "from 90-degrees side camera-right (split lighting from the right edge)"
     elif 112 < angle <= 158:
-        dir_en = "from 135-degrees back-right behind the subject's right side (crisp optical rim light)"
+        dir_en = "from 135-degrees back-right behind the subject's right side (three-quarter rear rim light)"
     elif 158 < angle <= 202:
         dir_en = "from 180-degrees directly behind the subject (pure rear backlight creating a crisp glowing rim halo)"
     elif 202 < angle <= 248:
-        dir_en = "from 225-degrees back-left behind the subject's left side (crisp optical rim light)"
+        dir_en = "from 225-degrees back-left behind the subject's left side (three-quarter rear rim light)"
     elif 248 < angle <= 292:
-        dir_en = "from 270-degrees hard side camera-left (dramatic split lighting from the left edge, right side in deep controlled shadow)"
+        dir_en = "from 270-degrees side camera-left (split lighting from the left edge)"
     else:
-        dir_en = "from 315-degrees (45-degrees camera-left Rembrandt key light, illuminating the left side of the subject and casting sculptural shadows to the right)"
+        dir_en = "from 315-degrees (45-degrees camera-left Rembrandt position, illuminating the left side of the subject and casting sculptural shadows to the right)"
 
     if light.distance_pct < 38:
         elev_en = "high overhead zenithal boom elevation"
@@ -217,14 +535,69 @@ def describe_light_vector_en(light: LightSourceSpec, role: str) -> str:
 
     color_map = {
         "Luz do Dia": "pure calibrated 5600K daylight",
+        "daylight": "pure calibrated 5600K daylight",
         "Sol Dourado": "warm 3500K golden sunlight gel",
+        "golden": "warm 3500K golden sunlight gel",
         "Tungstênio Âmbar": "warm 2700K amber tungsten lamp",
+        "tungsten": "warm 2700K amber tungsten lamp",
         "Frio Noturno": "cool 8000K steel-blue rim gel",
+        "cool": "cool 8000K steel-blue rim gel",
         "Rosa Crepúsculo": "soft warm magenta-rose gel",
+        "pink": "soft warm magenta-rose gel",
+        "Personalizada": f"custom color gel ({light.color_hex or '#FFD166'})",
+        "custom": f"custom color gel ({light.color_hex or '#FFD166'})",
     }
     color_en = color_map.get(light.color_label, light.color_label)
+    soft_en = map_softness_to_prompt_en(light.softness)
 
-    return f"{role} ({light.intensity}% intensity, {color_en}) positioned {dir_en} at {elev_en}."
+    return (
+        f"{role} ({light.intensity}% intensity, {color_en}, {soft_en}) "
+        f"positioned {dir_en} at {elev_en}."
+    )
+
+
+def build_preservation_and_locks_en(params: Optional[ProductionRequest]) -> str:
+    if not params:
+        return ""
+    clauses: List[str] = []
+    cat_map = {
+        "identity": "strictly preserve facial identity, bone structure, and skin features",
+        "product": "strictly preserve exact product geometry, seams, and industrial design details",
+        "apparel": "preserve clothing fabric weave, cut, and accessories",
+        "brand_logo": "preserve clean brand geometry without distorting logos or typography",
+        "background": "preserve background architectural layout and environmental context",
+        "palette": "preserve the reference chromatic palette and tonal harmony",
+        "style": "preserve the editorial visual mood and photographic style",
+    }
+    for c in params.preserve_categories:
+        if c in cat_map:
+            clauses.append(cat_map[c])
+
+    lock_map = {
+        "preserve_subject": "Subject Lock active: keep primary subject proportions and pose unchanged",
+        "lighting_only": "Lighting-Only Edit intent: keep composition, subject, and environment fixed while updating only light incidence, shadow direction, and color temperature",
+        "preserve_product_logo": "Product & Logo Lock active: zero geometric deformation on product body",
+        "preserve_composition": "Composition Lock active: maintain exact camera framing and horizon line",
+    }
+    for lk in params.locks:
+        if lk in lock_map:
+            clauses.append(lock_map[lk])
+
+    if params.depth_of_field == "shallow":
+        clauses.append("shallow optical depth of field with smooth background separation")
+    elif params.depth_of_field == "deep":
+        clauses.append("deep f/8 optical focus from foreground to distant background")
+    elif params.depth_of_field == "balanced":
+        clauses.append("balanced f/4 natural optical depth of field")
+
+    if params.framing_intent == "closer":
+        clauses.append("tighter medium-close framing on the primary subject")
+    elif params.framing_intent == "wider":
+        clauses.append("wider environmental framing with generous breathing room around the subject")
+    elif params.framing_intent == "center":
+        clauses.append("balanced center-weighted hero composition")
+
+    return ". ".join(clauses)
 
 
 def enforce_controlled_studio_optics(
@@ -233,19 +606,26 @@ def enforce_controlled_studio_optics(
     aperture: str,
     film: str,
     rig: SpatialLightingRig,
+    params: Optional[ProductionRequest] = None,
 ) -> str:
     """
     Calibra o prompt com física óptica autêntica de câmera RAW (Canon EOS R3 / Phase One IQ4),
-    diferenciando automaticamente produções em locação/estádio (plano médio-aberto com contexto
-    nítido e sem textos falsos) de produções em estúdio fechado.
+    incluindo as 3 fontes do Palco 360° (Key, Rim, Fill), mapeamento de maciez (softness),
+    razão Key:Fill e travas de consistência visual.
     """
     key_en = describe_light_vector_en(rig.key_light, "Key Light")
     rim_en = describe_light_vector_en(rig.rim_light, "Rim Light")
+    fill_en = describe_light_vector_en(rig.fill_light, "Fill Light")
+    ratio_str = compute_key_fill_ratio(rig)
+    locks_en = build_preservation_and_locks_en(params)
 
     film_look_map = {
         "Kodak Portra 400": "authentic Kodak Portra 400 color science with natural warm highlights and organic 35mm sensor grain",
+        "portra_inspired": "authentic Kodak Portra 400 color science with natural warm highlights and organic 35mm sensor grain",
         "CineStill 800T": "authentic CineStill 800T tungsten color science with deep cool shadows and natural optical halation on bright lights",
+        "cinestill_inspired": "authentic CineStill 800T tungsten color science with deep cool shadows and natural optical halation on bright lights",
         "Neutro": "authentic unedited RAW camera color calibration with natural dynamic range and subtle CMOS sensor texture",
+        "neutral": "authentic unedited RAW camera color calibration with natural dynamic range and subtle CMOS sensor texture",
     }
     film_en = film_look_map.get(film, film_look_map["Neutro"])
 
@@ -280,6 +660,8 @@ def enforce_controlled_studio_optics(
         ]
     )
 
+    locks_segment = f" {locks_en}." if locks_en else ""
+
     if is_stadium_or_ball:
         enhanced = (
             f"RAW unedited documentary sports campaign photograph shot on Canon EOS R3 full-frame camera with 28mm f/4 wide-angle lens from 2.2 meters distance at low pitch level "
@@ -287,29 +669,30 @@ def enforce_controlled_studio_optics(
             f"{raw_prompt.strip('. ')}. "
             f"Clean textless unbranded geometric panels with zero letters or words, natural stadium grass with small organic soil divots and painted white field line, "
             f"detailed stadium stands with spectators, perimeter LED boards, goalposts, and blazing stadium floodlight tower with natural optical lens bloom against the twilight sky. "
-            f"Controlled Directional Lighting Rig: {key_en} {rim_en} "
+            f"Controlled 3-Point Lighting Rig (Key:Fill {ratio_str}): {key_en} {rim_en} {fill_en}{locks_segment} "
             f"Accurate spherical geometry with zero distortion, {film_en}."
         )
     elif is_location:
         enhanced = (
             f"RAW unedited commercial editorial photograph shot on Phase One IQ4 150MP with {lens} prime lens at {aperture} in a 100% lighting-controlled location environment: "
             f"{raw_prompt.strip('. ')}. "
-            f"Controlled Directional Lighting Rig: {key_en} {rim_en} "
+            f"Controlled 3-Point Lighting Rig (Key:Fill {ratio_str}): {key_en} {rim_en} {fill_en}{locks_segment} "
             f"Perfect optical geometry with zero distortion, crisp tactile surface micro-texture, natural environmental depth, {film_en}."
         )
     else:
         enhanced = (
             f"RAW unedited commercial photograph shot in a 100% controlled professional photography studio on Hasselblad H6D-100c medium format camera with {lens} prime lens at {aperture}: "
             f"{raw_prompt.strip('. ')}. "
-            f"Controlled Studio Lighting Rig: {key_en} {rim_en} "
+            f"Controlled 3-Point Studio Lighting Rig (Key:Fill {ratio_str}): {key_en} {rim_en} {fill_en}{locks_segment} "
             f"Perfectly accurate geometry with zero distortion, razor-sharp tactile surface micro-texture, controlled negative fill shadows, {film_en}."
         )
     return sanitize_prompt(enhanced)
 
 
 def build_deterministic_direction(params: ProductionRequest) -> DirectorOutput:
-    text_lower = f"{params.brief} {params.refinement_instruction or ''}".lower()
-    rig = params.lighting_rig or SpatialLightingRig()
+    effective_brief = (params.brief or params.prompt or "").strip()
+    text_lower = f"{effective_brief} {params.refinement_instruction or ''}".lower()
+    rig = params.lighting_rig or params.lighting or SpatialLightingRig()
 
     is_stadium_or_ball = any(
         w in text_lower
@@ -317,7 +700,9 @@ def build_deterministic_direction(params: ProductionRequest) -> DirectorOutput:
     )
 
     lens: Literal["24mm", "35mm", "50mm", "85mm"] = "50mm"
-    if is_stadium_or_ball:
+    if params.lens in ("24mm", "35mm", "50mm", "85mm"):
+        lens = params.lens  # type: ignore
+    elif is_stadium_or_ball:
         lens = "35mm"
     elif any(
         w in text_lower
@@ -330,21 +715,29 @@ def build_deterministic_direction(params: ProductionRequest) -> DirectorOutput:
         lens = "35mm"
 
     aperture: Literal["f/1.4", "f/2.8", "f/8"] = "f/2.8"
-    if is_stadium_or_ball or any(
+    if params.aperture in ("f/1.4", "f/2.8", "f/8"):
+        aperture = params.aperture  # type: ignore
+    elif params.depth_of_field == "deep" or is_stadium_or_ball or any(
         w in text_lower for w in ["tudo em foco", "paisagem", "arquitetura", "nítido", "estádio"]
     ):
         aperture = "f/8"
-    elif any(w in text_lower for w in ["bem desfocado", "intimista", "retrato"]):
+    elif params.depth_of_field == "shallow" or any(
+        w in text_lower for w in ["bem desfocado", "intimista", "retrato"]
+    ):
         aperture = "f/1.4"
 
     film: Literal["Kodak Portra 400", "CineStill 800T", "Neutro"] = "Kodak Portra 400"
-    if any(w in text_lower for w in ["noite", "noturn", "neon", "bar", "beco", "poste", "chuva"]):
+    if params.film in ("Kodak Portra 400", "CineStill 800T", "Neutro"):
+        film = params.film  # type: ignore
+    elif any(w in text_lower for w in ["noite", "noturn", "neon", "bar", "beco", "poste", "chuva"]):
         film = "CineStill 800T"
     elif any(w in text_lower for w in ["estúdio", "produto", "comercial", "limpo", "neutro"]):
         film = "Neutro"
 
     aspect_ratio: Literal["16:9", "1:1", "4:5", "9:16"] = "4:5"
-    if any(w in text_lower for w in ["horizontal", "16:9", "cinema", "amplo", "paisagem"]):
+    if params.aspect_ratio in ("16:9", "1:1", "4:5", "9:16"):
+        aspect_ratio = params.aspect_ratio  # type: ignore
+    elif any(w in text_lower for w in ["horizontal", "16:9", "cinema", "amplo", "paisagem"]):
         aspect_ratio = "16:9"
     elif any(w in text_lower for w in ["quadrad", "1:1"]):
         aspect_ratio = "1:1"
@@ -354,23 +747,23 @@ def build_deterministic_direction(params: ProductionRequest) -> DirectorOutput:
     base_scene = (
         params.previous_prompt
         if (rig.relight_mode and params.previous_prompt)
-        else params.brief.strip()
+        else effective_brief
     )
     if params.refinement_instruction:
         base_scene = f"{base_scene}, {params.refinement_instruction.strip()}"
 
     final_prompt = enforce_controlled_studio_optics(
-        base_scene, lens, aperture, film, rig
+        base_scene, lens, aperture, film, rig, params
     )
 
+    ratio_str = compute_key_fill_ratio(rig)
     spatial_pt = (
         rig.spatial_summary
         or f"Luz principal ({rig.key_light.color_label}) a {rig.key_light.angle_deg}°"
     )
     camera_optics = (
-        f"Produção configurada com óptica {lens} em {aperture} e masterização RAW Capture One Pro. "
-        f"O Palco de Luz 360° foi calibrado com {spatial_pt.lower()}, preservando microtextura orgânica real, "
-        f"geometria perfeita sem distorções e profundidade óptica autêntica."
+        f"Produção configurada com intenção óptica {lens} em {aperture}, relação Key:Fill {ratio_str} e masterização RAW Capture One Pro. "
+        f"O Palco de Luz 360° foi calibrado com {spatial_pt.lower()}, preservando microtextura orgânica real e geometria sem distorções."
     )
 
     return DirectorOutput(
@@ -382,6 +775,214 @@ def build_deterministic_direction(params: ProductionRequest) -> DirectorOutput:
         final_prompt=final_prompt,
         variations=[],
     )
+
+
+# ==============================================================================
+# HISTOGRAMA, AVISOS DE CLIPPING E ANÁLISE DE REFERÊNCIA (FASES 5 e 7 - LUMEN 6.0)
+# ==============================================================================
+
+def compute_image_histogram_and_clipping(
+    image_bytes: bytes, source_type: str = "final_ai_result"
+) -> Dict[str, Any]:
+    """
+    Calcula o histograma real de 64 bins para Luminância, R, G e B, além de avisos
+    de altas luzes estouradas (highlight clipping >= 250) e sombras fechadas (shadow crush <= 5).
+    """
+    with Image.open(io.BytesIO(image_bytes)) as img:
+        rgb = img.convert("RGB")
+        lum = rgb.convert("L")
+        w, h = rgb.size
+        total_px = max(1, w * h)
+
+        hist_l = lum.histogram()  # 256 valores
+        hist_rgb = rgb.histogram()  # 768 valores (R:0..255, G:256..511, B:512..767)
+
+        def compress_64(arr256: List[int]) -> List[int]:
+            bins = []
+            for i in range(0, 256, 4):
+                bins.append(sum(arr256[i : i + 4]))
+            return bins
+
+        clipped_highlights_px = sum(hist_l[250:256])
+        crushed_shadows_px = sum(hist_l[0:6])
+
+        highlight_clip_pct = round((clipped_highlights_px / total_px) * 100.0, 2)
+        shadow_crush_pct = round((crushed_shadows_px / total_px) * 100.0, 2)
+
+        stat = ImageStat.Stat(lum)
+        mean_lum = round(stat.mean[0], 1)
+        dynamic_range_std = round(stat.stddev[0], 1)
+
+        return {
+            "analyzed_source": source_type,
+            "dimensions": {"width": w, "height": h},
+            "bins_64": {
+                "luminance": compress_64(hist_l),
+                "red": compress_64(hist_rgb[0:256]),
+                "green": compress_64(hist_rgb[256:512]),
+                "blue": compress_64(hist_rgb[512:768]),
+            },
+            "highlight_clip_pct": highlight_clip_pct,
+            "shadow_crush_pct": shadow_crush_pct,
+            "highlight_warning": highlight_clip_pct > 1.8,
+            "shadow_warning": shadow_crush_pct > 3.5,
+            "mean_luminance": mean_lum,
+            "contrast_stddev": dynamic_range_std,
+            "note": "Indicadores auxiliares calculados diretamente sobre os pixels do arquivo analisado.",
+        }
+
+
+def analyze_reference_heuristic_pillow(image_bytes: bytes) -> ReferenceAnalysisOutput:
+    """
+    Heurística local baseada na distribuição espacial de luminância, nitidez de transição
+    de bordas e balanço R/B da imagem. Rotulada honestamente como estimativa aproximada.
+    """
+    with Image.open(io.BytesIO(image_bytes)) as img:
+        rgb = img.convert("RGB").resize((128, 128), Image.Resampling.BILINEAR)
+        lum = rgb.convert("L")
+        stat_rgb = ImageStat.Stat(rgb)
+        stat_lum = ImageStat.Stat(lum)
+
+        mean_r, mean_g, mean_b = stat_rgb.mean
+        mean_l = stat_lum.mean[0]
+        std_l = stat_lum.stddev[0]
+
+        # Centroide ponderado de brilho para estimar direção dominante da luz
+        px = lum.load()
+        sum_w = 0.0
+        sum_x = 0.0
+        sum_y = 0.0
+        for y in range(128):
+            for x in range(128):
+                val = float(px[x, y])
+                weight = max(0.0, val - mean_l * 0.85) ** 2
+                sum_w += weight
+                sum_x += (x - 64.0) * weight
+                sum_y += (y - 64.0) * weight
+
+        if sum_w > 1e-3:
+            cx = sum_x / sum_w
+            cy = sum_y / sum_w
+            # Convenção do radar: 0° = base/frente, 90° = direita, 180° = topo/traseira, 270° = esquerda
+            angle_rad = math.atan2(cx, cy)
+            angle_deg = int(round((math.degrees(angle_rad) + 360) % 360))
+            radial = min(1.0, math.hypot(cx, cy) / 42.0)
+            distance_pct = int(round(35 + radial * 50))
+        else:
+            angle_deg = 315
+            distance_pct = 60
+
+        if angle_deg <= 30 or angle_deg >= 330:
+            dir_text = "Frontal / Eixo da câmera (~0°)"
+        elif 30 < angle_deg <= 120:
+            dir_text = f"Lateral / Diagonal Direita (~{angle_deg}°)"
+        elif 120 < angle_deg <= 240:
+            dir_text = f"Contraluz Traseira / Superior (~{angle_deg}°)"
+        else:
+            dir_text = f"Lateral / Rembrandt Esquerda (~{angle_deg}°)"
+
+        # Estimativa de maciez via gradiente médio de luminância
+        edges = lum.filter(ImageFilter.FIND_EDGES)
+        edge_mean = ImageStat.Stat(edges).mean[0]
+        softness_pct = int(round(max(15, min(92, 100 - (edge_mean * 1.6)))))
+        if softness_pct <= 30:
+            soft_text = f"Luz dura com sombras marcadas (~{softness_pct}%)"
+        elif softness_pct <= 65:
+            soft_text = f"Difusão média / Softbox (~{softness_pct}%)"
+        else:
+            soft_text = f"Luz ampla e suave (~{softness_pct}%)"
+
+        # Temperatura aparente pelo balanço R - B
+        rb_diff = mean_r - mean_b
+        if rb_diff > 22:
+            temp_text = "Quente / Âmbar (~3200K)"
+            color_label = "Tungstênio Âmbar"
+        elif rb_diff > 8:
+            temp_text = "Dourada suave (~4200K)"
+            color_label = "Sol Dourado"
+        elif rb_diff < -12:
+            temp_text = "Fria / Azulada (~7500K)"
+            color_label = "Frio Noturno"
+        else:
+            temp_text = "Neutra / Luz do Dia (~5600K)"
+            color_label = "Luz do Dia"
+
+        if std_l > 64:
+            contrast_text = "Contraste alto (sombras densas e altas luzes marcadas)"
+            fill_rim_text = "Preenchimento baixo (Key:Fill ~4:1) com possível recorte de contraluz"
+        elif std_l > 42:
+            contrast_text = "Contraste médio equilibrado"
+            fill_rim_text = "Preenchimento moderado (Key:Fill ~2.5:1)"
+        else:
+            contrast_text = "Contraste suave / Low-contrast"
+            fill_rim_text = "Preenchimento amplo (Key:Fill ~1.5:1)"
+
+        return ReferenceAnalysisOutput(
+            key_direction_estimate=dir_text,
+            estimated_angle_deg=angle_deg,
+            estimated_distance_pct=distance_pct,
+            relative_softness=soft_text,
+            estimated_softness_pct=softness_pct,
+            apparent_temperature=temp_text,
+            estimated_color_label=color_label,
+            contrast_level=contrast_text,
+            fill_and_rim_estimate=fill_rim_text,
+            confidence=0.62,
+            is_heuristic_fallback=True,
+            caveats=(
+                "Estimativa aproximada calculada localmente por distribuição de luminância e balanço cromático. "
+                "Não representa uma reconstrução fotométrica 3D completa da cena."
+            ),
+        )
+
+
+async def run_reference_analysis(req: ReferenceAnalysisRequest) -> ReferenceAnalysisOutput:
+    raw_b64 = req.image_base64
+    if "," in raw_b64:
+        raw_b64 = raw_b64.split(",", 1)[1]
+    image_bytes = base64.b64decode(raw_b64)
+
+    try:
+        client = get_genai_client()
+        image_part = types.Part.from_bytes(
+            data=image_bytes, mime_type=req.mime_type or "image/jpeg"
+        )
+        sys_prompt = (
+            "Você é um Diretor de Fotografia analisando a iluminação de uma imagem de referência. "
+            "Retorne em português brasileiro estimativas honestas da direção da luz principal, ângulo azimutal (0=frente, 90=direita, 180=trás, 270=esquerda, 315=45° esquerda), "
+            "maciez relativa (0-100), temperatura aparente, nível de contraste, presença de preenchimento/contraluz, grau de confiança (0.0 a 0.95) e ressalvas técnicas."
+        )
+        config = types.GenerateContentConfig(
+            system_instruction=sys_prompt,
+            response_mime_type="application/json",
+            response_schema=ReferenceAnalysisOutput,
+            temperature=0.2,
+        )
+        for model_name in ACTIVE_GEMINI_MODELS:
+            try:
+                resp = await asyncio.wait_for(
+                    client.aio.models.generate_content(
+                        model=model_name,
+                        contents=[
+                            image_part,
+                            "Analise a iluminação desta fotografia de referência e estime os parâmetros para o Palco de Luz 360°.",
+                        ],
+                        config=config,
+                    ),
+                    timeout=14.0,
+                )
+                if resp and resp.text:
+                    parsed = ReferenceAnalysisOutput.model_validate_json(resp.text)
+                    parsed.is_heuristic_fallback = False
+                    if not parsed.caveats:
+                        parsed.caveats = "Estimativa visual por modelo multimodal; superfícies reflexivas ou múltiplas fontes podem ter ambiguidade óptica."
+                    return parsed
+            except Exception as inner_exc:
+                logger.warning("Modelo %s indisponível em analyze-reference: %s", model_name, inner_exc)
+    except Exception as exc:
+        logger.info("Usando fallback heurístico local para análise de referência: %s", exc)
+
+    return await asyncio.to_thread(analyze_reference_heuristic_pillow, image_bytes)
 
 
 def analyze_image_optics_pillow(
@@ -444,15 +1045,15 @@ def master_raw_studio_photograph(img: Image.Image) -> Image.Image:
     return img
 
 
-def embed_exif_and_crop(
-    image_bytes: bytes,
+def crop_non_destructive_with_offset(
+    img: Image.Image,
     aspect_ratio: str,
-    trim_border_pct: float = 0.0,
-    metadata_info: Optional[Dict[str, str]] = None,
-) -> bytes:
+    offset_x_pct: float = 0.0,
+    offset_y_pct: float = 0.0,
+) -> Image.Image:
     """
-    Preserva a geometria 1:1 dos pixels realizando apenas corte central proporcional,
-    aplica masterização óptica RAW Capture One Pro e grava metadados EXIF em JPEG 4:4:4 (quality=98).
+    Realiza corte proporcional exato sem jamais deformar ou esticar pixels,
+    permitindo deslocamento (offset_x_pct, offset_y_pct entre -0.5 e +0.5).
     """
     ratio_map = {
         "16:9": 16.0 / 9.0,
@@ -462,8 +1063,51 @@ def embed_exif_and_crop(
         "3:4": 3.0 / 4.0,
         "4:3": 4.0 / 3.0,
     }
-    target_ratio = ratio_map.get(aspect_ratio, 4.0 / 5.0)
+    if aspect_ratio == "original":
+        return img.copy()
 
+    target_ratio = ratio_map.get(aspect_ratio, 4.0 / 5.0)
+    width, height = img.size
+    current_ratio = width / float(height)
+
+    if abs(current_ratio - target_ratio) < 1e-3:
+        new_width, new_height = width, height
+    elif current_ratio > target_ratio:
+        new_height = height
+        new_width = int(round(height * target_ratio))
+    else:
+        new_width = width
+        new_height = int(round(width / target_ratio))
+
+    max_dx = max(0, width - new_width)
+    max_dy = max(0, height - new_height)
+
+    cx = (width - new_width) / 2.0 + offset_x_pct * max_dx
+    cy = (height - new_height) / 2.0 + offset_y_pct * max_dy
+
+    left = int(round(max(0.0, min(float(max_dx), cx))))
+    top = int(round(max(0.0, min(float(max_dy), cy))))
+    right = left + new_width
+    bottom = top + new_height
+
+    return img.crop((left, top, right, bottom))
+
+
+def embed_exif_and_crop(
+    image_bytes: bytes,
+    aspect_ratio: str,
+    trim_border_pct: float = 0.0,
+    metadata_info: Optional[Dict[str, str]] = None,
+    apply_mastering: bool = True,
+    offset_x_pct: float = 0.0,
+    offset_y_pct: float = 0.0,
+    output_format: str = "JPEG",
+    quality: int = 98,
+) -> bytes:
+    """
+    Preserva a geometria 1:1 dos pixels realizando apenas corte proporcional,
+    aplica masterização óptica RAW Capture One Pro e grava metadados EXIF em JPEG 4:4:4 (quality=98).
+    """
     with Image.open(io.BytesIO(image_bytes)) as img:
         if img.mode != "RGB":
             img = img.convert("RGB")
@@ -474,30 +1118,15 @@ def embed_exif_and_crop(
             dy = int(h0 * trim_border_pct)
             img = img.crop((dx, dy, w0 - dx, h0 - dy))
 
-        width, height = img.size
-        current_ratio = width / height
-
-        if abs(current_ratio - target_ratio) < 1e-3:
-            new_width, new_height = width, height
-        elif current_ratio > target_ratio:
-            new_height = height
-            new_width = int(round(height * target_ratio))
-        else:
-            new_width = width
-            new_height = int(round(width / target_ratio))
-
-        left = (width - new_width) // 2
-        top = (height - new_height) // 2
-        right = left + new_width
-        bottom = top + new_height
-
-        cropped = img.crop((left, top, right, bottom))
-        mastered = master_raw_studio_photograph(cropped)
+        cropped = crop_non_destructive_with_offset(
+            img, aspect_ratio, offset_x_pct=offset_x_pct, offset_y_pct=offset_y_pct
+        )
+        mastered = master_raw_studio_photograph(cropped) if apply_mastering else cropped
 
         exif = mastered.getexif()
         exif[0x010F] = "LUMEN"
-        exif[0x0110] = "LUMEN 360 RAW Optical Studio"
-        exif[0x0131] = "LUMEN Capture One Optical Engine v4.0"
+        exif[0x0110] = "LUMEN Studio 6.0 Optical Engine"
+        exif[0x0131] = "LUMEN Capture One Optical Engine v6.0"
         exif[0x013B] = "LUMEN Studio"
         if metadata_info:
             desc = (
@@ -509,19 +1138,111 @@ def embed_exif_and_crop(
             exif[0x010E] = desc
 
         output_buffer = io.BytesIO()
-        mastered.save(
-            output_buffer,
-            format="JPEG",
-            quality=98,
-            subsampling=0,
-            optimize=True,
-            exif=exif.tobytes(),
-        )
+        fmt = output_format.upper()
+        if fmt == "PNG":
+            mastered.save(output_buffer, format="PNG", optimize=True)
+        elif fmt == "WEBP":
+            mastered.save(output_buffer, format="WEBP", quality=quality, method=6)
+        else:
+            mastered.save(
+                output_buffer,
+                format="JPEG",
+                quality=quality,
+                subsampling=0,
+                optimize=True,
+                exif=exif.tobytes(),
+            )
         return output_buffer.getvalue()
 
 
 def center_crop_4_5(image_bytes: bytes) -> bytes:
     return embed_exif_and_crop(image_bytes, "4:5", trim_border_pct=0.0)
+
+
+async def execute_social_pack(req: SocialPackRequest) -> Dict[str, Any]:
+    """
+    Gera um pacote multiformato (4:5, 9:16, 1:1, 16:9) a partir de uma imagem mestre,
+    preservando 100% da proporção dos pixels (zero distorção) e reportando status por arquivo.
+    """
+    raw_b64 = req.source_image_base64
+    if "," in raw_b64:
+        raw_b64 = raw_b64.split(",", 1)[1]
+    source_bytes = base64.b64decode(raw_b64)
+
+    safe_project = re.sub(r"[^a-zA-Z0-9_-]+", "-", req.project_name.strip()).strip("-") or "lumen"
+    safe_version = re.sub(r"[^a-zA-Z0-9_-]+", "-", req.version_tag.strip()).strip("-") or "v1"
+    ext = {"JPEG": "jpg", "PNG": "png", "WEBP": "webp"}.get(req.output_format.upper(), "jpg")
+    mime = {
+        "JPEG": "image/jpeg",
+        "PNG": "image/png",
+        "WEBP": "image/webp",
+    }.get(req.output_format.upper(), "image/jpeg")
+
+    outputs: List[Dict[str, Any]] = []
+    succeeded_count = 0
+    failed_count = 0
+
+    for item in req.formats:
+        fmt_slug = item.aspect_ratio.replace(":", "x")
+        filename_base = (
+            req.naming_template.replace("{project}", safe_project)
+            .replace("{format}", fmt_slug)
+            .replace("{version}", safe_version)
+        )
+        filename_base = re.sub(r"[^a-zA-Z0-9_.-]+", "_", filename_base)
+        filename = f"{filename_base}.{ext}"
+
+        try:
+            out_bytes = await asyncio.to_thread(
+                embed_exif_and_crop,
+                source_bytes,
+                item.aspect_ratio,
+                0.0,
+                {"aspect_ratio": item.aspect_ratio},
+                False,
+                item.offset_x_pct,
+                item.offset_y_pct,
+                req.output_format,
+                req.quality,
+            )
+            with Image.open(io.BytesIO(out_bytes)) as out_img:
+                w, h = out_img.size
+
+            outputs.append(
+                {
+                    "aspect_ratio": item.aspect_ratio,
+                    "filename": filename,
+                    "status": "succeeded",
+                    "width": w,
+                    "height": h,
+                    "mime_type": mime,
+                    "image_base64": base64.b64encode(out_bytes).decode("utf-8"),
+                    "error": None,
+                }
+            )
+            succeeded_count += 1
+        except Exception as exc:
+            failed_count += 1
+            outputs.append(
+                {
+                    "aspect_ratio": item.aspect_ratio,
+                    "filename": filename,
+                    "status": "failed",
+                    "width": 0,
+                    "height": 0,
+                    "mime_type": mime,
+                    "image_base64": None,
+                    "error": str(exc),
+                }
+            )
+
+    return {
+        "status": "succeeded" if failed_count == 0 else ("partial" if succeeded_count > 0 else "failed"),
+        "succeeded_count": succeeded_count,
+        "failed_count": failed_count,
+        "note": "Cada formato foi adaptado por recorte óptico proporcional não destrutivo a partir da imagem mestre (sem esticar pixels).",
+        "items": outputs,
+    }
 
 
 def get_genai_client() -> genai.Client:
@@ -538,6 +1259,7 @@ async def run_director_agent(
     client: genai.Client, params: ProductionRequest
 ) -> DirectorOutput:
     contents_list: List[Any] = []
+    effective_brief = (params.brief or params.prompt or "").strip()
 
     if params.reference_image_base64:
         try:
@@ -552,19 +1274,39 @@ async def run_director_agent(
         except Exception as exc:
             logger.warning("Não foi possível decodificar imagem de referência: %s", exc)
 
-    prompt_parts = [f"Pedido do usuário em linguagem natural:\n\"{params.brief.strip()}\""]
+    for ref_item in params.references[:3]:
+        try:
+            raw_r = ref_item.image_base64
+            if "," in raw_r:
+                raw_r = raw_r.split(",", 1)[1]
+            r_bytes = base64.b64decode(raw_r)
+            contents_list.append(
+                types.Part.from_bytes(data=r_bytes, mime_type=ref_item.mime_type or "image/jpeg")
+            )
+        except Exception as exc:
+            logger.warning("Falha ao decodificar referência adicional (%s): %s", ref_item.role, exc)
 
-    rig = params.lighting_rig or SpatialLightingRig()
+    prompt_parts = [f"Pedido do usuário em linguagem natural:\n\"{effective_brief}\""]
+
+    rig = params.lighting_rig or params.lighting or SpatialLightingRig()
     key_en = describe_light_vector_en(rig.key_light, "PRIMARY STUDIO KEY LIGHT")
     rim_en = describe_light_vector_en(rig.rim_light, "SECONDARY STUDIO RIM LIGHT")
+    fill_en = describe_light_vector_en(rig.fill_light, "TERTIARY STUDIO FILL LIGHT")
+    ratio_str = compute_key_fill_ratio(rig)
 
     prompt_parts.append(
-        f"\nAMBIENTE 100% CONTROLADO + COORDENADAS DO PALCO DE LUZ 360°:\n"
+        f"\nAMBIENTE 100% CONTROLADO + COORDENADAS DO PALCO DE LUZ 360° (3 FONTES):\n"
         f"- Resumo espacial no radar: {rig.spatial_summary or 'Luz principal a 45° pela esquerda'}\n"
+        f"- Razão Key:Fill estimada: {ratio_str}\n"
         f"- {key_en}\n"
         f"- {rim_en}\n"
+        f"- {fill_en}\n"
         f"- Modo Reiluminação de Foto Pronta (`relight_mode`): {rig.relight_mode}"
     )
+
+    locks_en = build_preservation_and_locks_en(params)
+    if locks_en:
+        prompt_parts.append(f"\nTRAVAS DE CONSISTÊNCIA E PRESERVAÇÃO SOLICITADAS:\n{locks_en}")
 
     if params.previous_prompt and (params.refinement_instruction or rig.relight_mode):
         prompt_parts.append(
@@ -574,9 +1316,10 @@ async def run_director_agent(
             f"Mantenha o mesmo sujeito e composição da cena anterior, recalculando a luz para o novo ângulo do Radar 360°!"
         )
 
-    if params.reference_image_base64:
+    if params.reference_image_base64 or params.references:
+        roles_desc = ", ".join([r.role for r in params.references]) or "composição e atmosfera"
         prompt_parts.append(
-            "\nIMAGEM DE REFERÊNCIA ANEXADA: Extraia a composição, distância de câmera, profundidade de campo e atmosfera da imagem enviada combinando com o ângulo do Palco de Luz 360°."
+            f"\nIMAGENS DE REFERÊNCIA ANEXADAS (Papéis: {roles_desc}): Extraia os elementos solicitados combinando com o ângulo do Palco de Luz 360°."
         )
 
     if params.contact_sheet:
@@ -620,6 +1363,7 @@ async def run_director_agent(
                     parsed.aperture,
                     parsed.film,
                     rig,
+                    params,
                 )
                 for v in parsed.variations:
                     v.prompt = enforce_controlled_studio_optics(
@@ -628,6 +1372,7 @@ async def run_director_agent(
                         parsed.aperture,
                         parsed.film,
                         rig,
+                        params,
                     )
                 return parsed
         except Exception as exc:
@@ -642,11 +1387,12 @@ async def _synthesize_bfl_flux_studio(
     requested_ratio: str,
     metadata_info: Optional[Dict[str, str]] = None,
     seed_offset: int = 0,
-) -> bytes:
+) -> Tuple[bytes, str]:
     """
     Cluster Óptico de Alta Definição FLUX.1 (resolução nativa 1344x768 / 1024x1280 /
     1024x1024 / 768x1344, calibrado com guidance_scale=1.65 para realismo RAW sem CGI,
     seguido de masterização óptica Capture One Pro em JPEG 4:4:4 quality=98).
+    Retorna (image_bytes, provider_name).
     """
     dim_map = {
         "16:9": (1344, 768),
@@ -657,24 +1403,27 @@ async def _synthesize_bfl_flux_studio(
     w, h = dim_map.get(requested_ratio, (1024, 1280))
     seed = random.randint(1000, 999999) + seed_offset
 
-    # Cluster ordenado por qualidade fotográfica RAW e assinatura exata de cada endpoint Gradio
     flux_cluster = [
         (
+            "FLUX.1-Merged RAW (10-Step CFG 1.65)",
             "https://multimodalart-flux-1-merged.hf.space",
             "/gradio_api/call/infer",
             [final_prompt, seed, False, w, h, 1.65, 10],
         ),
         (
+            "FLUX.1-RealismLoRA (16-Step)",
             "https://damarjati-flux-1-realismlora.hf.space",
             "/gradio_api/call/run_lora",
             [final_prompt, 2.2, 16, False, seed, w, h, 0.85],
         ),
         (
+            "BFL FLUX.1-Schnell Official",
             "https://black-forest-labs-flux-1-schnell.hf.space",
             "/gradio_api/call/infer",
             [final_prompt, seed, False, w, h, 4],
         ),
         (
+            "Realtime-FLUX Studio",
             "https://kingnish-realtime-flux.hf.space",
             "/gradio_api/call/RealtimeFlux",
             [final_prompt, seed, w, h, False, 6],
@@ -689,7 +1438,7 @@ async def _synthesize_bfl_flux_studio(
     async with httpx.AsyncClient(
         timeout=55.0, follow_redirects=True, headers=headers
     ) as http_client:
-        for base_space, endpoint, payload_data in flux_cluster:
+        for provider_label, base_space, endpoint, payload_data in flux_cluster:
             try:
                 call_resp = await http_client.post(
                     f"{base_space}{endpoint}",
@@ -719,13 +1468,14 @@ async def _synthesize_bfl_flux_studio(
                             img_url = data_arr[0]["url"]
                             img_resp = await http_client.get(img_url)
                             img_resp.raise_for_status()
-                            return await asyncio.to_thread(
+                            mastered_bytes = await asyncio.to_thread(
                                 embed_exif_and_crop,
                                 img_resp.content,
                                 requested_ratio,
                                 0.0,
                                 metadata_info,
                             )
+                            return mastered_bytes, provider_label
             except Exception as exc:
                 logger.warning(
                     "Nó óptico %s indisponível, alternando para próximo nó: %s",
@@ -738,13 +1488,17 @@ async def _synthesize_bfl_flux_studio(
     )
 
 
-async def run_imaging_agent(
+async def run_imaging_agent_with_telemetry(
     client: genai.Client,
     final_prompt: str,
     requested_ratio: str,
     metadata_info: Optional[Dict[str, str]] = None,
     seed_offset: int = 0,
-) -> bytes:
+) -> Tuple[bytes, str, bool]:
+    """
+    Executa a geração de imagem e retorna (image_bytes, provider_used, fallback_occurred)
+    para transparência total no Gerenciador de Jobs.
+    """
     api_aspect_ratio = "3:4" if requested_ratio == "4:5" else requested_ratio
 
     config = types.GenerateImagesConfig(
@@ -785,13 +1539,14 @@ async def run_imaging_agent(
             image_bytes = (
                 base64.b64decode(raw_bytes) if isinstance(raw_bytes, str) else raw_bytes
             )
-            return await asyncio.to_thread(
+            out_bytes = await asyncio.to_thread(
                 embed_exif_and_crop,
                 image_bytes,
                 requested_ratio,
                 0.0,
                 metadata_info,
             )
+            return out_bytes, "Google Imagen 3.0", False
         except PermissionError:
             raise
         except Exception as exc:
@@ -816,19 +1571,34 @@ async def run_imaging_agent(
                         raw_bytes = (
                             base64.b64decode(raw) if isinstance(raw, str) else raw
                         )
-                        return await asyncio.to_thread(
+                        out_bytes = await asyncio.to_thread(
                             embed_exif_and_crop,
                             raw_bytes,
                             requested_ratio,
                             0.0,
                             metadata_info,
                         )
+                        return out_bytes, f"Google {fallback_model}", True
         except Exception as exc:
             logger.info("Modelo %s indisponível na cota atual: %s", fallback_model, exc)
 
-    return await _synthesize_bfl_flux_studio(
+    flux_bytes, flux_provider = await _synthesize_bfl_flux_studio(
         final_prompt, requested_ratio, metadata_info, seed_offset
     )
+    return flux_bytes, flux_provider, True
+
+
+async def run_imaging_agent(
+    client: genai.Client,
+    final_prompt: str,
+    requested_ratio: str,
+    metadata_info: Optional[Dict[str, str]] = None,
+    seed_offset: int = 0,
+) -> bytes:
+    img_bytes, _provider, _fb = await run_imaging_agent_with_telemetry(
+        client, final_prompt, requested_ratio, metadata_info, seed_offset
+    )
+    return img_bytes
 
 
 async def run_qa_agent(
@@ -883,28 +1653,57 @@ def format_ndjson(payload: Dict[str, Any]) -> str:
 async def execute_production_stream(
     params: ProductionRequest,
 ) -> AsyncGenerator[str, None]:
+    job, is_duplicate = create_or_get_job(params)
+    effective_brief = (params.brief or params.prompt or "").strip()
+
     try:
+        if is_duplicate and job.status in ("preparing", "running", "finalizing"):
+            yield format_ndjson(
+                {
+                    "event": "error",
+                    "job_id": job.job_id,
+                    "status": job.status,
+                    "message": "Esta operação já está em execução (proteção de idempotência ativa). Aguarde a conclusão.",
+                }
+            )
+            return
+
         client = get_genai_client()
-        rig = params.lighting_rig or SpatialLightingRig()
+        rig = params.lighting_rig or params.lighting or SpatialLightingRig()
+        ratio_str = compute_key_fill_ratio(rig)
+
+        update_job_state(
+            job.job_id,
+            "preparing",
+            "Calculando geometria espacial 360° e direção óptica",
+        )
 
         # Etapa 1: Diretor de Fotografia & Geometria Espacial 360°
         yield format_ndjson(
             {
                 "event": "step",
                 "step": "direction",
+                "job_id": job.job_id,
+                "job_status": "preparing",
                 "message": (
                     "Recalculando geometria de luz 360° na cena"
                     if rig.relight_mode
                     else (
                         "Ajustando direção fotográfica da cena"
                         if params.refinement_instruction
-                        else "Calibrando ambiente 100% controlado de estúdio e luz 360°"
+                        else "Calibrando iluminação de 3 pontos (Key, Rim, Fill) e direção óptica"
                     )
                 ),
             }
         )
 
         direction = await run_director_agent(client, params)
+
+        if job.canceled:
+            yield format_ndjson(
+                {"event": "error", "job_id": job.job_id, "message": "Job cancelado pelo usuário."}
+            )
+            return
 
         metadata_info = {
             "lens": direction.lens,
@@ -913,18 +1712,26 @@ async def execute_production_stream(
             "aspect_ratio": direction.aspect_ratio,
         }
 
+        update_job_state(
+            job.job_id,
+            "running",
+            "Executando síntese óptica e masterização RAW",
+        )
+
         # Etapa 2: Motor Gráfico
         yield format_ndjson(
             {
                 "event": "step",
                 "step": "imaging",
+                "job_id": job.job_id,
+                "job_status": "running",
                 "message": (
                     "Revelando 3 estudos de luz em estúdio (Prova de Estúdio)"
                     if params.contact_sheet
                     else (
                         "Reiluminando fotografia no novo ângulo 360°"
                         if rig.relight_mode
-                        else "Capturando fotografia em alta definição (Médio Formato)"
+                        else "Capturando fotografia em alta definição (Masterização RAW)"
                     )
                 ),
                 "direction": {
@@ -934,11 +1741,14 @@ async def execute_production_stream(
                     "aperture": direction.aperture,
                     "film": direction.film,
                     "aspect_ratio": direction.aspect_ratio,
+                    "key_fill_ratio": ratio_str,
                 },
             }
         )
 
         contact_sheet_items: List[Dict[str, str]] = []
+        provider_used = "FLUX.1 Optical Cluster"
+        fallback_occurred = False
 
         if params.contact_sheet:
             var_list = direction.variations[:3] if direction.variations else []
@@ -959,7 +1769,7 @@ async def execute_production_stream(
                 ]
 
             tasks = [
-                run_imaging_agent(
+                run_imaging_agent_with_telemetry(
                     client,
                     v.prompt,
                     direction.aspect_ratio,
@@ -968,9 +1778,9 @@ async def execute_production_stream(
                 )
                 for idx, v in enumerate(var_list)
             ]
-            results_bytes = await asyncio.gather(*tasks)
-            image_bytes = results_bytes[0]
-            for v, b in zip(var_list, results_bytes):
+            results_tuples = await asyncio.gather(*tasks)
+            image_bytes, provider_used, fallback_occurred = results_tuples[0]
+            for v, (b, _prov, _fb) in zip(var_list, results_tuples):
                 contact_sheet_items.append(
                     {
                         "label": v.label,
@@ -979,16 +1789,34 @@ async def execute_production_stream(
                     }
                 )
         else:
-            image_bytes = await run_imaging_agent(
-                client, direction.final_prompt, direction.aspect_ratio, metadata_info
+            image_bytes, provider_used, fallback_occurred = (
+                await run_imaging_agent_with_telemetry(
+                    client, direction.final_prompt, direction.aspect_ratio, metadata_info
+                )
             )
 
-        # Etapa 3: Auditor de QA Visual Multimodal
+        if job.canceled:
+            yield format_ndjson(
+                {"event": "error", "job_id": job.job_id, "message": "Job cancelado pelo usuário."}
+            )
+            return
+
+        update_job_state(
+            job.job_id,
+            "finalizing",
+            "Auditando nitidez óptica, histograma e controle de luz",
+            provider_used=provider_used,
+            fallback_occurred=fallback_occurred,
+        )
+
+        # Etapa 3: Auditor de QA Visual Multimodal + Histograma
         yield format_ndjson(
             {
                 "event": "step",
                 "step": "qa",
-                "message": "Auditando nitidez óptica e controle de luz",
+                "job_id": job.job_id,
+                "job_status": "finalizing",
+                "message": "Auditando nitidez óptica, histograma e controle de luz",
             }
         )
 
@@ -998,7 +1826,7 @@ async def execute_production_stream(
             qa_result = await run_qa_agent(
                 client,
                 image_bytes,
-                params.brief,
+                effective_brief,
                 direction,
                 rig.spatial_summary,
             )
@@ -1012,25 +1840,29 @@ async def execute_production_stream(
                     {
                         "event": "step",
                         "step": "imaging",
+                        "job_id": job.job_id,
+                        "job_status": "running",
                         "message": "Aperfeiçoando luz automaticamente pela curadoria",
                     }
                 )
                 refined_prompt = sanitize_prompt(
                     f"{direction.final_prompt}, {qa_result.improvement_suggestion}"
                 )
-                image_bytes = await run_imaging_agent(
-                    client,
-                    refined_prompt,
-                    direction.aspect_ratio,
-                    metadata_info,
-                    seed_offset=777,
+                image_bytes, provider_used, fallback_occurred = (
+                    await run_imaging_agent_with_telemetry(
+                        client,
+                        refined_prompt,
+                        direction.aspect_ratio,
+                        metadata_info,
+                        seed_offset=777,
+                    )
                 )
                 direction.final_prompt = refined_prompt
                 auto_corrected = True
                 qa_result = await run_qa_agent(
                     client,
                     image_bytes,
-                    params.brief,
+                    effective_brief,
                     direction,
                     rig.spatial_summary,
                 )
@@ -1055,39 +1887,84 @@ async def execute_production_stream(
                 "auto_corrected": False,
             }
 
+        histogram_data = await asyncio.to_thread(
+            compute_image_histogram_and_clipping, image_bytes, "final_ai_result"
+        )
+
         image_b64 = base64.b64encode(image_bytes).decode("utf-8")
+        version_id = f"ver_{uuid.uuid4().hex[:10]}"
+
+        final_job = update_job_state(
+            job.job_id,
+            "succeeded",
+            "Fotografia revelada e auditada com sucesso",
+            provider_used=provider_used,
+            fallback_occurred=fallback_occurred,
+            result_metadata={
+                "version_id": version_id,
+                "lens": direction.lens,
+                "aperture": direction.aperture,
+                "film": direction.film,
+                "aspect_ratio": direction.aspect_ratio,
+                "key_fill_ratio": ratio_str,
+                "dimensions": histogram_data["dimensions"],
+                "qa_score": qa_payload["score"],
+            },
+        )
 
         yield format_ndjson(
             {
                 "event": "complete",
                 "data": {
+                    "job_id": job.job_id,
+                    "version_id": version_id,
+                    "parent_version_id": params.parent_version_id,
+                    "project_id": params.project_id,
                     "image_base64": image_b64,
                     "mime_type": "image/jpeg",
                     "direction": {
                         "camera_optics": direction.camera_optics,
                         "final_prompt": direction.final_prompt,
+                        "key_fill_ratio": ratio_str,
                     },
                     "qa": qa_payload,
                     "qa_available": qa_available,
+                    "histogram": histogram_data,
                     "contact_sheet": contact_sheet_items,
                     "lighting_rig": rig.model_dump(),
+                    "normalized_rig": normalize_rig_dict(rig),
+                    "job_telemetry": {
+                        "job_id": job.job_id,
+                        "status": "succeeded",
+                        "elapsed_ms": final_job.elapsed_ms if final_job else 0,
+                        "provider_used": provider_used,
+                        "fallback_occurred": fallback_occurred,
+                        "preserve_categories": params.preserve_categories,
+                        "locks_applied": params.locks,
+                        "honest_limitations": job.honest_limitations,
+                    },
                     "params": {
-                        "brief": params.brief.strip(),
+                        "brief": effective_brief,
                         "lens": direction.lens,
                         "aperture": direction.aperture,
                         "film": direction.film,
                         "aspect_ratio": direction.aspect_ratio,
+                        "depth_of_field": params.depth_of_field or "balanced",
+                        "framing_intent": params.framing_intent or "preserve",
                     },
                 },
             }
         )
 
     except ValueError as val_err:
-        yield format_ndjson({"event": "error", "message": str(val_err)})
+        update_job_state(job.job_id, "failed", str(val_err), error=str(val_err))
+        yield format_ndjson({"event": "error", "job_id": job.job_id, "message": str(val_err)})
     except PermissionError as perm_err:
-        yield format_ndjson({"event": "error", "message": str(perm_err)})
+        update_job_state(job.job_id, "failed", str(perm_err), error=str(perm_err))
+        yield format_ndjson({"event": "error", "job_id": job.job_id, "message": str(perm_err)})
     except Exception as exc:
         logger.exception("Erro inesperado no pipeline de produção LUMEN")
         err_msg = str(exc)
         friendly = f"Não foi possível concluir a produção no momento: {err_msg}"
-        yield format_ndjson({"event": "error", "message": friendly})
+        update_job_state(job.job_id, "failed", friendly, error=err_msg)
+        yield format_ndjson({"event": "error", "job_id": job.job_id, "message": friendly})
