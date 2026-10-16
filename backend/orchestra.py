@@ -616,6 +616,106 @@ def build_preservation_and_locks_en(params: Optional[ProductionRequest]) -> str:
     return ". ".join(clauses)
 
 
+def translate_and_enrich_brief(brief: str) -> str:
+    """
+    Higieniza comandos em linguagem natural (PT/EN), corrige erros ortográficos comuns,
+    identifica o sujeito principal (produto, esporte, pessoa, veículo, etc.) e traduz
+    para descritores ópticos hiper-realistas de padrão publicitário internacional,
+    evitando blur indesejado e mantendo foco crítico no sujeito.
+    """
+    cleaned = re.sub(
+        r"^(gere|crie|faça|faca|produza|quero|gostaria de|foto de|imagem de|capture|fotografe)\s+(um|uma|o|a)?\s*",
+        "",
+        brief.strip(),
+        flags=re.IGNORECASE,
+    ).strip(". ,;:!?")
+
+    cleaned_lower = cleaned.lower()
+    cleaned_lower = (
+        cleaned_lower.replace("campp", "campo")
+        .replace("futeboll", "futebol")
+        .replace("estadio", "estádio")
+        .replace("relogio", "relógio")
+        .replace("tenis", "tênis")
+    )
+
+    # 1. Esporte / Bola de futebol / Equipamento esportivo
+    if any(k in cleaned_lower for k in ["bola de futebol", "bola no campo", "bola", "soccer ball"]):
+        return (
+            "Hero commercial advertising photograph of an official leather match soccer ball resting on manicured stadium grass pitch, "
+            "extreme close-up ground level hero angle, crisp hexagonal textured leather panels with precise stitching, glistening morning dew water droplets on ball surface, "
+            "luscious deep green grass blades in sharp focus, soft twilight stadium floodlight glow in background bokeh, "
+            "Hasselblad H6D-100c medium format camera, 85mm lens at f/2.8, 1/2000s shutter speed, zero motion blur, tack sharp critical focus on soccer ball"
+        )
+
+    # 2. Perfume / Cosméticos / Frascos
+    if any(k in cleaned_lower for k in ["perfume", "cosmético", "cosmetico", "frasco", "creme", "maquiagem"]):
+        return (
+            f"Luxury commercial hero product photograph of {cleaned_lower} on black reflective polished marble, "
+            "crisp glass refractions, elegant metallic accents, subtle mist droplets, tack sharp critical focus, 1/2000s strobe sync, zero motion blur"
+        )
+
+    # 3. Relógio / Jóias
+    if any(k in cleaned_lower for k in ["relógio", "relogio", "watch", "jóia", "joia", "anel", "colar", "ouro", "diamante"]):
+        return (
+            f"High-end macro commercial luxury product photography of {cleaned_lower}, "
+            "sapphire crystal reflections, brushed metal texture, intricate dial details, tack sharp focus, 1/2000s strobe sync, zero motion blur"
+        )
+
+    # 4. Tênis / Calçados
+    if any(k in cleaned_lower for k in ["tênis", "tenis", "sneaker", "sapato", "calçado", "calcado"]):
+        return (
+            f"Commercial advertising hero photograph of {cleaned_lower}, "
+            "tactile leather and mesh micro-textures, crisp clean stitching, studio tabletop lighting, tack sharp focus, 1/2000s strobe sync, zero motion blur"
+        )
+
+    # 5. Automóvel / Carro
+    if any(k in cleaned_lower for k in ["carro", "automóvel", "automovel", "veículo", "veiculo", "sports car"]):
+        return (
+            f"Hero commercial automotive photography of {cleaned_lower}, "
+            "sleek metallic paint reflections, sculpted aerodynamic curves, crisp wheel rims, tack sharp focus, 1/2000s shutter speed, zero motion blur"
+        )
+
+    # 6. Retrato / Moda / Pessoas
+    if any(k in cleaned_lower for k in ["retrato", "mulher", "homem", "modelo", "rosto", "pessoa", "portrait"]):
+        return (
+            f"High-end commercial studio portrait photograph of {cleaned_lower}, "
+            "natural authentic skin pores, sharp catchlights in the eyes, elegant styling, tack sharp eye focus, 1/1000s strobe sync, zero motion blur"
+        )
+
+    # 7. Mapeamento léxico geral Português -> Inglês para termos corriqueiros
+    pt_to_en = {
+        "campo": "field",
+        "gramado": "grass lawn",
+        "grama": "green grass",
+        "estádio": "stadium",
+        "estudio": "studio",
+        "estúdio": "studio",
+        "garrafa": "bottle",
+        "copo": "glass",
+        "café": "coffee",
+        "mesa": "table",
+        "livro": "book",
+        "madeira": "wood",
+        "noite": "night",
+        "rua": "street",
+        "praia": "beach",
+        "floresta": "forest",
+        "água": "water",
+        "fogo": "fire",
+        "luz": "light",
+        "sombra": "shadow",
+    }
+    words = cleaned_lower.split()
+    translated_words = [pt_to_en.get(w, w) for w in words]
+    translated_sentence = " ".join(translated_words)
+
+    return (
+        f"Commercial studio photograph of {translated_sentence}, "
+        "tack-sharp critical focus on the primary subject, 1/2000s shutter speed, zero motion blur, zero lens distortion, pristine medium-format optical clarity"
+    )
+
+
 def enforce_controlled_studio_optics(
     raw_prompt: str,
     lens: str,
@@ -629,6 +729,8 @@ def enforce_controlled_studio_optics(
     incluindo as 3 fontes do Palco 360° (Key, Rim, Fill), mapeamento de maciez (softness),
     razão Key:Fill e travas de consistência visual.
     """
+    enriched_scene = translate_and_enrich_brief(raw_prompt)
+
     key_en = describe_light_vector_en(rig.key_light, "Key Light")
     rim_en = describe_light_vector_en(rig.rim_light, "Rim Light")
     fill_en = describe_light_vector_en(rig.fill_light, "Fill Light")
@@ -644,64 +746,14 @@ def enforce_controlled_studio_optics(
         "neutral": "authentic unedited RAW camera color calibration with natural dynamic range and subtle CMOS sensor texture",
     }
     film_en = film_look_map.get(film, film_look_map["Neutro"])
-
-    lower_p = raw_prompt.lower()
-    is_stadium_or_ball = any(
-        w in lower_p
-        for w in [
-            "soccer",
-            "football",
-            "bola",
-            "stadium",
-            "estádio",
-            "pitch",
-            "gramado",
-            "grama",
-            "turf",
-        ]
-    )
-    is_location = is_stadium_or_ball or any(
-        w in lower_p
-        for w in [
-            "street",
-            "rua",
-            "beach",
-            "praia",
-            "mountain",
-            "city",
-            "cidade",
-            "forest",
-            "landscape",
-            "outdoor",
-        ]
-    )
-
     locks_segment = f" {locks_en}." if locks_en else ""
 
-    if is_stadium_or_ball:
-        enhanced = (
-            f"RAW unedited documentary sports campaign photograph shot on Canon EOS R3 full-frame camera with 28mm f/4 wide-angle lens from 2.2 meters distance at low pitch level "
-            f"(medium-wide environmental framing where the subject occupies one-fourth of the lower-center frame with generous surrounding turf): "
-            f"{raw_prompt.strip('. ')}. "
-            f"Clean textless unbranded geometric panels with zero letters or words, natural stadium grass with small organic soil divots and painted white field line, "
-            f"detailed stadium stands with spectators, perimeter LED boards, goalposts, and blazing stadium floodlight tower with natural optical lens bloom against the twilight sky. "
-            f"Controlled 3-Point Lighting Rig (Key:Fill {ratio_str}): {key_en} {rim_en} {fill_en}{locks_segment} "
-            f"Accurate spherical geometry with zero distortion, {film_en}."
-        )
-    elif is_location:
-        enhanced = (
-            f"RAW unedited commercial editorial photograph shot on Phase One IQ4 150MP with {lens} prime lens at {aperture} in a 100% lighting-controlled location environment: "
-            f"{raw_prompt.strip('. ')}. "
-            f"Controlled 3-Point Lighting Rig (Key:Fill {ratio_str}): {key_en} {rim_en} {fill_en}{locks_segment} "
-            f"Perfect optical geometry with zero distortion, crisp tactile surface micro-texture, natural environmental depth, {film_en}."
-        )
-    else:
-        enhanced = (
-            f"RAW unedited commercial photograph shot in a 100% controlled professional photography studio on Hasselblad H6D-100c medium format camera with {lens} prime lens at {aperture}: "
-            f"{raw_prompt.strip('. ')}. "
-            f"Controlled 3-Point Studio Lighting Rig (Key:Fill {ratio_str}): {key_en} {rim_en} {fill_en}{locks_segment} "
-            f"Perfectly accurate geometry with zero distortion, razor-sharp tactile surface micro-texture, controlled negative fill shadows, {film_en}."
-        )
+    enhanced = (
+        f"RAW commercial photograph shot in a 100% lighting-controlled environment on Hasselblad H6D-100c medium format camera with {lens} lens at {aperture}: "
+        f"{enriched_scene}. "
+        f"Controlled 3-Point Lighting Rig (Key:Fill {ratio_str}): {key_en} {rim_en} {fill_en}{locks_segment} "
+        f"Accurate optical geometry with zero distortion, razor-sharp tactile surface micro-texture, 1/2000s shutter speed, zero motion blur, {film_en}."
+    )
     return sanitize_prompt(enhanced)
 
 
@@ -1424,9 +1476,20 @@ async def _synthesize_pollinations(
             if resp.status_code == 200 and resp.content and len(resp.content) > 1000:
                 ct = resp.headers.get("content-type", "")
                 if "image" in ct or resp.content[:3] in (b"\xff\xd8\xff", b"\x89PN", b"RIF"):
+                    def _strip_logo(raw: bytes) -> bytes:
+                        with Image.open(io.BytesIO(raw)) as im:
+                            iw, ih = im.size
+                            if ih > 100:
+                                cropped = im.crop((0, 0, iw, ih - 38))
+                                buf = io.BytesIO()
+                                cropped.save(buf, format="JPEG", quality=98)
+                                return buf.getvalue()
+                            return raw
+
+                    clean_bytes = await asyncio.to_thread(_strip_logo, resp.content)
                     mastered_bytes = await asyncio.to_thread(
                         embed_exif_and_crop,
-                        resp.content,
+                        clean_bytes,
                         requested_ratio,
                         0.0,
                         metadata_info,
@@ -1467,7 +1530,10 @@ async def _synthesize_ai_horde(
         "nsfw": False,
         "censor_nsfw": True,
         "models": [
+            "Juggernaut XL",
+            "AlbedoBase XL (SDXL)",
             "ICBINP - I Cant Believe Its Not Photography",
+            "Realistic Vision",
             "Deliberate",
             "stable_diffusion",
         ],
