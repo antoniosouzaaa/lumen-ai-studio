@@ -31,6 +31,10 @@
     checkerboardActive: false,
     histogramVisible: false,
     undoStack: [],
+    pipetteMode: false,
+    relightImageBase64: null,
+    currentReviewSessionId: 'live_estudio_01',
+    lookbookPlates: [],
 
     // Rig Espacial 360° (3 Fontes)
     activeLightSource: 'key', // 'key' | 'rim' | 'fill'
@@ -788,6 +792,180 @@
         state.histogramVisible = !state.histogramVisible;
         const panel = document.getElementById('histogram-panel');
         if (panel) panel.classList.toggle('hidden', !state.histogramVisible);
+      });
+    }
+
+    setupColorChecker();
+    setupExportPro();
+  }
+
+  const COLORCHECKER_24_COLORS = [
+    { name: "Dark Skin", hex: "#735244" },
+    { name: "Light Skin", hex: "#C29682" },
+    { name: "Blue Sky", hex: "#627A9D" },
+    { name: "Foliage", hex: "#576C43" },
+    { name: "Blue Flower", hex: "#8580B1" },
+    { name: "Bluish Green", hex: "#67BDAD" },
+    { name: "Orange", hex: "#DA6E2F" },
+    { name: "Purplish Blue", hex: "#4754A2" },
+    { name: "Moderate Red", hex: "#BE4E5B" },
+    { name: "Purple", hex: "#5C3C6E" },
+    { name: "Yellow Green", hex: "#9EBA3D" },
+    { name: "Orange Yellow", hex: "#E49E2D" },
+    { name: "Blue", hex: "#3B428A" },
+    { name: "Green", hex: "#47934B" },
+    { name: "Red", hex: "#A93237" },
+    { name: "Yellow", hex: "#E8C22B" },
+    { name: "Magenta", hex: "#B84887" },
+    { name: "Cyan", hex: "#0084A5" },
+    { name: "White 9.5", hex: "#F3F3F2" },
+    { name: "Neutral 8", hex: "#C8C8C8" },
+    { name: "Neutral 6.5", hex: "#A0A0A0" },
+    { name: "Neutral 5 (18% Gray)", hex: "#7A7A79" },
+    { name: "Neutral 3.5", hex: "#555555" },
+    { name: "Black 2", hex: "#343434" }
+  ];
+
+  function setupColorChecker() {
+    const swatchesContainer = document.getElementById('colorchecker-swatches-container');
+    if (swatchesContainer && swatchesContainer.children.length === 0) {
+      COLORCHECKER_24_COLORS.forEach((c) => {
+        const sw = document.createElement('div');
+        sw.className = 'colorchecker-swatch';
+        sw.style.backgroundColor = c.hex;
+        sw.title = `${c.name} (${c.hex})`;
+        swatchesContainer.appendChild(sw);
+      });
+    }
+
+    const toggleBtn = document.getElementById('toggle-colorchecker-btn');
+    const palette = document.getElementById('colorchecker-palette');
+    const closeBtn = document.getElementById('close-colorchecker-btn');
+    const viewport = document.getElementById('photo-viewport');
+    const resultImg = document.getElementById('result-image');
+
+    function setPipetteMode(active) {
+      state.pipetteMode = active;
+      if (palette) palette.classList.toggle('hidden', !active);
+      if (viewport) viewport.classList.toggle('is-pipette-active', active);
+      if (toggleBtn) toggleBtn.classList.toggle('is-active', active);
+      if (active) {
+        showToast('Pipeta 18% ativa: clique em qualquer área neutra da foto para calibrar.');
+      }
+    }
+
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', () => setPipetteMode(!state.pipetteMode));
+    }
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => setPipetteMode(false));
+    }
+
+    if (resultImg) {
+      resultImg.addEventListener('click', async (e) => {
+        if (!state.pipetteMode || !resultImg.src || resultImg.src.startsWith('data:image/svg')) return;
+
+        const rect = resultImg.getBoundingClientRect();
+        const xPct = Math.max(0.01, Math.min(0.99, (e.clientX - rect.left) / rect.width));
+        const yPct = Math.max(0.01, Math.min(0.99, (e.clientY - rect.top) / rect.height));
+
+        showToast('Calibrando balanço de branco neutro 18%...');
+        try {
+          const resp = await fetch('/api/color-balance', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              image_base64: resultImg.src,
+              sample_x_pct: xPct,
+              sample_y_pct: yPct,
+            }),
+          });
+          if (!resp.ok) throw new Error('Falha ao calibrar cor.');
+          const data = await resp.json();
+
+          resultImg.src = data.corrected_image_base64;
+          const afterImg = document.getElementById('split-after-img');
+          if (afterImg) afterImg.src = data.corrected_image_base64;
+
+          const statusEl = document.getElementById('colorchecker-status');
+          if (statusEl) {
+            statusEl.classList.remove('hidden');
+            statusEl.textContent = `Ajuste: ${data.estimated_kelvin_shift > 0 ? '+' : ''}${data.estimated_kelvin_shift}K (${data.tint_shift})`;
+          }
+          setPipetteMode(false);
+          showToast(`Balanço de branco calibrado! (${data.tint_shift})`);
+        } catch (err) {
+          showToast(err.message || 'Erro ao calibrar balanço de branco.');
+        }
+      });
+    }
+  }
+
+  function setupExportPro() {
+    const psdBtn = document.getElementById('export-psd-btn');
+    const tiffBtn = document.getElementById('export-tiff-btn');
+
+    if (psdBtn) {
+      psdBtn.addEventListener('click', async () => {
+        const resultImg = document.getElementById('result-image');
+        if (!resultImg || !resultImg.src || resultImg.src.length < 50) {
+          showToast('Nenhuma imagem no estúdio para exportar.');
+          return;
+        }
+
+        showToast('Gerando arquivo Photoshop .PSD com camadas e passes ópticos...');
+        psdBtn.disabled = true;
+        try {
+          const resp = await fetch('/api/export-psd', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image_base64: resultImg.src }),
+          });
+          if (!resp.ok) throw new Error('Falha ao gerar PSD.');
+          const data = await resp.json();
+
+          const a = document.createElement('a');
+          a.href = data.psd_base64;
+          a.download = data.filename || 'lumen_studio_pro_layers.psd';
+          a.click();
+          showToast(`Arquivo Photoshop PSD (${data.passes_count} camadas) exportado!`);
+        } catch (err) {
+          showToast(err.message || 'Erro ao exportar PSD.');
+        } finally {
+          psdBtn.disabled = false;
+        }
+      });
+    }
+
+    if (tiffBtn) {
+      tiffBtn.addEventListener('click', async () => {
+        const resultImg = document.getElementById('result-image');
+        if (!resultImg || !resultImg.src || resultImg.src.length < 50) {
+          showToast('Nenhuma imagem no estúdio para exportar.');
+          return;
+        }
+
+        showToast('Gerando TIFF 16-bit com metadados Hasselblad...');
+        tiffBtn.disabled = true;
+        try {
+          const resp = await fetch('/api/export-tiff', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image_base64: resultImg.src, color_space: 'Adobe RGB (1998)' }),
+          });
+          if (!resp.ok) throw new Error('Falha ao gerar TIFF.');
+          const data = await resp.json();
+
+          const a = document.createElement('a');
+          a.href = data.tiff_base64;
+          a.download = data.filename || 'lumen_studio_hasselblad_raw.tiff';
+          a.click();
+          showToast('TIFF 16-bit Hasselblad exportado com sucesso!');
+        } catch (err) {
+          showToast(err.message || 'Erro ao exportar TIFF.');
+        } finally {
+          tiffBtn.disabled = false;
+        }
       });
     }
   }
@@ -1598,7 +1776,7 @@
       b.classList.toggle('is-active', b.getAttribute('data-nav-target') === viewName);
     });
 
-    const views = ['studio', 'projects', 'recipes', 'pack', 'history'];
+    const views = ['studio', 'relight', 'lookbook', 'review', 'projects', 'recipes', 'pack', 'history'];
     views.forEach((v) => {
       const el = document.getElementById(`view-${v}`);
       if (el) el.classList.toggle('hidden', v !== viewName);
@@ -1616,6 +1794,9 @@
       }
     }
 
+    if (viewName === 'relight') setupRelightView();
+    if (viewName === 'lookbook') setupLookbookView();
+    if (viewName === 'review') setupReviewView();
     if (viewName === 'projects') loadProjectsView();
     if (viewName === 'recipes') loadRecipesView();
     if (viewName === 'history') loadHistoryView();
@@ -1879,6 +2060,510 @@
   }
 
   // ===========================================================================
+  // ÁREA 5: NEURAL RELIGHTING DE FOTOS REAIS
+  // ===========================================================================
+
+  let relightInitialized = false;
+
+  function setupRelightView() {
+    if (relightInitialized) return;
+    relightInitialized = true;
+
+    const fileInput = document.getElementById('relight-file-input');
+    const dropzone = document.getElementById('relight-dropzone');
+    const previewWrap = document.getElementById('relight-preview-wrap');
+    const previewImg = document.getElementById('relight-preview-img');
+    const clearBtn = document.getElementById('relight-clear-btn');
+    const runBtn = document.getElementById('run-relight-btn');
+    const preserveCheck = document.getElementById('relight-preserve-identity');
+    const contextPromptInput = document.getElementById('relight-context-prompt');
+
+    const resultsEmpty = document.getElementById('relight-results-empty');
+    const resultsContainer = document.getElementById('relight-results-container');
+    const resBeforeImg = document.getElementById('relight-res-before-img');
+    const resAfterImg = document.getElementById('relight-res-after-img');
+    const sendStudioBtn = document.getElementById('relight-send-to-studio-btn');
+    const downloadBtn = document.getElementById('relight-download-btn');
+
+    function handleFile(file) {
+      if (!file || !file.type.startsWith('image/')) {
+        showToast('Por favor selecione um arquivo de imagem válido (JPG, PNG ou WEBP).');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        state.relightImageBase64 = e.target.result;
+        if (previewImg) previewImg.src = state.relightImageBase64;
+        if (previewWrap) previewWrap.classList.remove('hidden');
+        if (dropzone) dropzone.classList.add('hidden');
+        if (runBtn) runBtn.disabled = false;
+        showToast('Foto carregada. Ajuste o Radar 360° e clique em Reiluminar.');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    if (dropzone && fileInput) {
+      dropzone.addEventListener('click', () => fileInput.click());
+      dropzone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropzone.classList.add('is-dragover');
+      });
+      dropzone.addEventListener('dragleave', () => dropzone.classList.remove('is-dragover'));
+      dropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('is-dragover');
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+          handleFile(e.dataTransfer.files[0]);
+        }
+      });
+      fileInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files[0]) {
+          handleFile(e.target.files[0]);
+        }
+      });
+    }
+
+    if (clearBtn) {
+      clearBtn.addEventListener('click', () => {
+        state.relightImageBase64 = null;
+        if (previewImg) previewImg.src = '';
+        if (previewWrap) previewWrap.classList.add('hidden');
+        if (dropzone) dropzone.classList.remove('hidden');
+        if (runBtn) runBtn.disabled = true;
+        if (fileInput) fileInput.value = '';
+      });
+    }
+
+    if (runBtn) {
+      runBtn.addEventListener('click', async () => {
+        if (!state.relightImageBase64) return;
+        runBtn.disabled = true;
+        const origText = runBtn.textContent;
+        runBtn.textContent = 'Reiluminando cena com o Palco 360°...';
+
+        try {
+          const resp = await fetch('/api/relight', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              image_base64: state.relightImageBase64,
+              lighting_rig: state.lightingRig,
+              preserve_identity: preserveCheck ? preserveCheck.checked : true,
+              creative_prompt: contextPromptInput ? contextPromptInput.value.trim() : null,
+            }),
+          });
+          if (!resp.ok) throw new Error('Falha ao reiluminar imagem.');
+          const data = await resp.json();
+
+          if (resBeforeImg) resBeforeImg.src = state.relightImageBase64;
+          if (resAfterImg) resAfterImg.src = data.image_base64;
+
+          if (resultsEmpty) resultsEmpty.classList.add('hidden');
+          if (resultsContainer) resultsContainer.classList.remove('hidden');
+
+          showToast(`Foto reiluminada com sucesso via ${data.provider_used}!`);
+        } catch (err) {
+          showToast(err.message || 'Erro ao reiluminar foto.');
+        } finally {
+          runBtn.disabled = false;
+          runBtn.textContent = origText;
+        }
+      });
+    }
+
+    if (sendStudioBtn) {
+      sendStudioBtn.addEventListener('click', async () => {
+        if (!resAfterImg || !resAfterImg.src) return;
+        const mainImg = document.getElementById('result-image');
+        if (mainImg) mainImg.src = resAfterImg.src;
+
+        const blob = dataURLtoBlob(resAfterImg.src);
+        await window.lumenDB.saveProduction({
+          version_id: `ver_relight_${Date.now()}`,
+          project_id: state.activeProject,
+          image_base64: resAfterImg.src,
+          image_blob: blob,
+          direction: { camera_optics: 'Reiluminação de foto real via Radar 360°' },
+          lighting_rig: state.lightingRig,
+          params: { brief: 'Neural Relighting de fotografia real' },
+        });
+
+        switchView('studio');
+        showToast('Foto reiluminada transferida para o Studio!');
+      });
+    }
+
+    if (downloadBtn) {
+      downloadBtn.addEventListener('click', () => {
+        if (!resAfterImg || !resAfterImg.src) return;
+        const a = document.createElement('a');
+        a.href = resAfterImg.src;
+        a.download = `lumen_relit_${Date.now()}.jpg`;
+        a.click();
+      });
+    }
+  }
+
+  // ===========================================================================
+  // ÁREA 6: LOOKBOOK ENGINE (CONSISTÊNCIA MULTIDISPARO)
+  // ===========================================================================
+
+  let lookbookInitialized = false;
+
+  function setupLookbookView() {
+    if (lookbookInitialized) return;
+    lookbookInitialized = true;
+
+    const genBtn = document.getElementById('generate-lookbook-btn');
+    const promptInput = document.getElementById('lookbook-prompt-input');
+    const grid = document.getElementById('lookbook-grid');
+    const emptyState = document.getElementById('lookbook-empty-state');
+
+    if (genBtn) {
+      genBtn.addEventListener('click', async () => {
+        const prompt = promptInput ? promptInput.value.trim() : '';
+        if (!prompt) {
+          showToast('Descreva o sujeito ou produto do lookbook para manter a consistência.');
+          promptInput?.focus();
+          return;
+        }
+
+        const checkedBoxes = document.querySelectorAll('.lookbook-angle-checkbox:checked');
+        const selectedAngleIds = Array.from(checkedBoxes).map((cb) => cb.value);
+
+        genBtn.disabled = true;
+        const origText = genBtn.textContent;
+        genBtn.textContent = 'Revelando catálogo de 6 ângulos consistentes...';
+        showToast('Gerando lookbook de alta coerência com iluminação do Radar 360°...');
+
+        try {
+          const resp = await fetch('/api/lookbook/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              prompt: prompt,
+              lighting_rig: state.lightingRig,
+              selected_angle_ids: selectedAngleIds,
+            }),
+          });
+          if (!resp.ok) throw new Error('Falha ao gerar lookbook.');
+          const data = await resp.json();
+
+          state.lookbookPlates = data.plates || [];
+          renderLookbookGrid(state.lookbookPlates);
+
+          if (emptyState) emptyState.classList.add('hidden');
+          if (grid) grid.classList.remove('hidden');
+
+          showToast(`Lookbook gerado com sucesso! ${state.lookbookPlates.length} pranchas criadas.`);
+        } catch (err) {
+          showToast(err.message || 'Erro ao gerar lookbook.');
+        } finally {
+          genBtn.disabled = false;
+          genBtn.textContent = origText;
+        }
+      });
+    }
+  }
+
+  function renderLookbookGrid(plates) {
+    const grid = document.getElementById('lookbook-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    plates.forEach((p) => {
+      const card = document.createElement('div');
+      card.className = 'lookbook-plate-card';
+
+      const img = document.createElement('img');
+      img.className = 'lookbook-plate-thumb';
+      img.src = p.image_base64;
+      img.alt = p.angle_name;
+      card.appendChild(img);
+
+      const infoBox = document.createElement('div');
+      infoBox.className = 'p-2.5 flex flex-col gap-1.5';
+
+      const title = document.createElement('span');
+      title.className = 'text-xs font-semibold text-ivory';
+      title.textContent = p.angle_name;
+      infoBox.appendChild(title);
+
+      const meta = document.createElement('div');
+      meta.className = 'flex items-center justify-between text-[10px] text-text-muted font-mono';
+      meta.textContent = `${p.lens} · ${p.aperture}`;
+
+      const dlBtn = document.createElement('button');
+      dlBtn.type = 'button';
+      dlBtn.className = 'lumen-btn-secondary py-0.5 px-2 text-[10px]';
+      dlBtn.textContent = 'Baixar';
+      dlBtn.addEventListener('click', () => {
+        const a = document.createElement('a');
+        a.href = p.image_base64;
+        a.download = `lookbook_${p.angle_id}_${Date.now()}.jpg`;
+        a.click();
+      });
+      meta.appendChild(dlBtn);
+      infoBox.appendChild(meta);
+
+      card.appendChild(infoBox);
+      grid.appendChild(card);
+    });
+  }
+
+  // ===========================================================================
+  // ÁREA 7: LIVE REVIEW & APROVAÇÃO DE CLIENTE (CAPTURE ONE LIVE)
+  // ===========================================================================
+
+  let reviewInitialized = false;
+
+  function setupReviewView() {
+    if (reviewInitialized) return;
+    reviewInitialized = true;
+
+    const copyLinkBtn = document.getElementById('copy-client-review-link-btn');
+    const sendStudioBtn = document.getElementById('send-studio-to-review-btn');
+    const stageImg = document.getElementById('review-stage-img');
+    const pinsOverlay = document.getElementById('review-stage-pins-overlay');
+    const pinsList = document.getElementById('review-pins-list');
+    const pinsCount = document.getElementById('review-pins-count');
+    const statusTag = document.getElementById('review-status-tag');
+    const starBtns = document.querySelectorAll('#review-stars-bar .rating-star-btn');
+
+    const rejectBtn = document.getElementById('review-status-reject');
+    const needsWorkBtn = document.getElementById('review-status-needs-work');
+    const approveBtn = document.getElementById('review-status-approve');
+
+    async function loadReviewSession() {
+      try {
+        const resp = await fetch(`/api/review/sessions/${state.currentReviewSessionId}`);
+        if (!resp.ok) return;
+        const sess = await resp.json();
+
+        if (sess.items && sess.items.length > 0) {
+          const activeItem = sess.items[sess.items.length - 1];
+          if (stageImg) stageImg.src = activeItem.image_base64;
+          updateReviewStatusBadge(activeItem.status_tag);
+          updateReviewStars(activeItem.stars || 0);
+        } else {
+          const curImg = document.getElementById('result-image');
+          if (curImg && curImg.src && stageImg) {
+            stageImg.src = curImg.src;
+          }
+        }
+
+        renderReviewPins(sess.pins || []);
+      } catch (err) {
+        console.warn('Erro ao carregar sessão de revisão:', err);
+      }
+    }
+
+    function updateReviewStars(stars) {
+      starBtns.forEach((btn) => {
+        const s = parseInt(btn.getAttribute('data-star'), 10);
+        btn.classList.toggle('is-active', s <= stars);
+      });
+    }
+
+    function updateReviewStatusBadge(tag) {
+      if (!statusTag) return;
+      if (tag === 'approved') {
+        statusTag.textContent = 'Aprovado pelo Diretor de Arte';
+        statusTag.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-success/20 border border-success text-success';
+      } else if (tag === 'review') {
+        statusTag.textContent = 'Ajustes Solicitados';
+        statusTag.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-warning/20 border border-warning text-warning';
+      } else if (tag === 'rejected') {
+        statusTag.textContent = 'Rejeitado';
+        statusTag.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-danger/20 border border-danger text-danger';
+      } else {
+        statusTag.textContent = 'Aguardando Avaliação';
+        statusTag.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-bg border border-border text-text-muted';
+      }
+    }
+
+    function renderReviewPins(pins) {
+      if (pinsOverlay) pinsOverlay.innerHTML = '';
+      if (pinsList) pinsList.innerHTML = '';
+      if (pinsCount) pinsCount.textContent = String(pins.length);
+
+      const emptyNotice = document.getElementById('review-pins-empty-notice');
+      if (emptyNotice) emptyNotice.classList.toggle('hidden', pins.length > 0);
+
+      pins.forEach((p, idx) => {
+        if (pinsOverlay) {
+          const marker = document.createElement('div');
+          marker.className = `review-pin-marker ${p.resolved ? 'is-resolved' : ''}`;
+          marker.style.left = `${p.x_pct * 100}%`;
+          marker.style.top = `${p.y_pct * 100}%`;
+          marker.textContent = String(idx + 1);
+          marker.title = `${p.author}: ${p.comment}`;
+          pinsOverlay.appendChild(marker);
+        }
+
+        if (pinsList) {
+          const card = document.createElement('div');
+          card.className = `review-pin-card ${p.resolved ? 'is-resolved' : ''}`;
+
+          const header = document.createElement('div');
+          header.className = 'flex items-center justify-between';
+
+          const author = document.createElement('span');
+          author.className = 'text-xs font-bold text-ivory flex items-center gap-1.5';
+          author.textContent = `#${idx + 1} ${p.author}`;
+          header.appendChild(author);
+
+          if (!p.resolved) {
+            const resBtn = document.createElement('button');
+            resBtn.type = 'button';
+            resBtn.className = 'lumen-btn-secondary text-[10px] py-0.5 px-1.5 text-success';
+            resBtn.textContent = 'Resolver';
+            resBtn.addEventListener('click', async () => {
+              await fetch(`/api/review/sessions/${state.currentReviewSessionId}/pins/${p.id}/resolve`, { method: 'POST' });
+              p.resolved = true;
+              loadReviewSession();
+              showToast('Alfinete marcado como resolvido!');
+            });
+            header.appendChild(resBtn);
+          } else {
+            const tag = document.createElement('span');
+            tag.className = 'text-[10px] text-success font-semibold';
+            tag.textContent = 'Resolvido';
+            header.appendChild(tag);
+          }
+          card.appendChild(header);
+
+          const comment = document.createElement('p');
+          comment.className = 'text-xs text-text-secondary m-0 leading-snug';
+          comment.textContent = p.comment;
+          card.appendChild(comment);
+
+          pinsList.appendChild(card);
+        }
+      });
+    }
+
+    if (copyLinkBtn) {
+      copyLinkBtn.addEventListener('click', () => {
+        const link = `${window.location.origin}${window.location.pathname}?session=${state.currentReviewSessionId}&view=review`;
+        navigator.clipboard.writeText(link).then(() => {
+          showToast('Link de aprovação copiado! Compartilhe com o cliente.');
+        }).catch(() => {
+          prompt('Copie o link abaixo para compartilhar com o cliente:', link);
+        });
+      });
+    }
+
+    if (sendStudioBtn) {
+      sendStudioBtn.addEventListener('click', async () => {
+        const curImg = document.getElementById('result-image');
+        if (!curImg || !curImg.src) {
+          showToast('Nenhuma foto no estúdio para enviar.');
+          return;
+        }
+
+        try {
+          const resp = await fetch(`/api/review/sessions/${state.currentReviewSessionId}/items`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image_base64: curImg.src, title: 'Produção Studio' }),
+          });
+          if (resp.ok) {
+            loadReviewSession();
+            showToast('Fotografia enviada para a Sessão de Aprovação!');
+          }
+        } catch (err) {
+          showToast('Erro ao enviar foto para a sessão.');
+        }
+      });
+    }
+
+    starBtns.forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const s = parseInt(btn.getAttribute('data-star'), 10);
+        updateReviewStars(s);
+        try {
+          await fetch(`/api/review/sessions/${state.currentReviewSessionId}/rate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ item_id: 'latest', stars: s, status_tag: 'reviewed' }),
+          });
+          showToast(`Classificação de ${s} estrela(s) registrada!`);
+        } catch (_) {}
+      });
+    });
+
+    if (approveBtn) {
+      approveBtn.addEventListener('click', async () => {
+        updateReviewStatusBadge('approved');
+        await fetch(`/api/review/sessions/${state.currentReviewSessionId}/rate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ item_id: 'latest', stars: 5, status_tag: 'approved' }),
+        });
+        showToast('Fotografia APROVADA com sucesso!');
+      });
+    }
+
+    if (needsWorkBtn) {
+      needsWorkBtn.addEventListener('click', async () => {
+        updateReviewStatusBadge('review');
+        await fetch(`/api/review/sessions/${state.currentReviewSessionId}/rate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ item_id: 'latest', stars: 3, status_tag: 'review' }),
+        });
+        showToast('Status marcado como Ajustes Solicitados.');
+      });
+    }
+
+    if (rejectBtn) {
+      rejectBtn.addEventListener('click', async () => {
+        updateReviewStatusBadge('rejected');
+        await fetch(`/api/review/sessions/${state.currentReviewSessionId}/rate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ item_id: 'latest', stars: 1, status_tag: 'rejected' }),
+        });
+        showToast('Foto rejeitada.');
+      });
+    }
+
+    if (stageImg) {
+      stageImg.addEventListener('click', async (e) => {
+        const rect = stageImg.getBoundingClientRect();
+        const xPct = Math.max(0.01, Math.min(0.99, (e.clientX - rect.left) / rect.width));
+        const yPct = Math.max(0.01, Math.min(0.99, (e.clientY - rect.top) / rect.height));
+
+        const comment = prompt('Deixe uma anotação neste ponto da imagem (ex: clarear sombra, aumentar rim light):');
+        if (!comment || !comment.trim()) return;
+
+        try {
+          const resp = await fetch(`/api/review/sessions/${state.currentReviewSessionId}/pins`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              item_id: 'latest',
+              x_pct: xPct,
+              y_pct: yPct,
+              comment: comment.trim(),
+              author: 'Diretor de Arte',
+            }),
+          });
+          if (resp.ok) {
+            loadReviewSession();
+            showToast('Alfinete adicionado com sucesso!');
+          }
+        } catch (_) {
+          showToast('Erro ao criar alfinete.');
+        }
+      });
+    }
+
+    loadReviewSession();
+  }
+
+  // ===========================================================================
   // INICIALIZAÇÃO DO ESTÚDIO
   // ===========================================================================
 
@@ -1887,6 +2572,16 @@
     setupNavigation();
     updateSpatialSummaryAndRatio();
     renderLightStage();
+
+    // Leitura de parâmetros de URL para sessões de aprovação compartilhadas
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('session')) {
+      state.currentReviewSessionId = urlParams.get('session');
+      switchView('review');
+    } else if (urlParams.get('view')) {
+      switchView(urlParams.get('view'));
+    }
+
     initIcons();
 
     // Health Check Real

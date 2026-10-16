@@ -109,7 +109,7 @@
   <!-- SHELL PRINCIPAL: RAIL 5 ÁREAS + CONTROLES + WORKSPACE -->
   <div class="lumen-shell" id="app-shell">
 
-    <!-- 1. NAVIGATION RAIL LATERAL (5 Áreas) -->
+    <!-- 1. NAVIGATION RAIL LATERAL (8 Áreas de Estúdio Pro) -->
     <nav class="lumen-nav-rail" aria-label="Navegação principal da plataforma">
       <button
         type="button"
@@ -120,6 +120,36 @@
       >
         <i data-lucide="sun" class="w-4 h-4" aria-hidden="true"></i>
         <span>Studio</span>
+      </button>
+
+      <button
+        type="button"
+        class="lumen-nav-btn"
+        data-nav-target="relight"
+        aria-label="Neural Relighting de Fotos Reais com Radar 360°"
+      >
+        <i data-lucide="wand-2" class="w-4 h-4" aria-hidden="true"></i>
+        <span>Relight</span>
+      </button>
+
+      <button
+        type="button"
+        class="lumen-nav-btn"
+        data-nav-target="lookbook"
+        aria-label="Lookbook Engine com Consistência Multidisparo"
+      >
+        <i data-lucide="book-open" class="w-4 h-4" aria-hidden="true"></i>
+        <span>Lookbook</span>
+      </button>
+
+      <button
+        type="button"
+        class="lumen-nav-btn"
+        data-nav-target="review"
+        aria-label="Sessão Remota de Aprovação de Estúdio (Capture One Live)"
+      >
+        <i data-lucide="message-square" class="w-4 h-4" aria-hidden="true"></i>
+        <span>Review</span>
       </button>
 
       <button
@@ -563,14 +593,24 @@
             </button>
           </div>
 
-          <!-- Controles de Zoom e Histograma -->
+          <!-- Ferramentas Pro: ColorChecker, Zoom, Histograma e Exportação PSD/TIFF -->
           <div class="flex items-center gap-1.5">
+            <button type="button" class="lumen-btn-secondary p-1.5" id="toggle-colorchecker-btn" title="Balanço de Branco Neutro 18% (ColorChecker)">
+              <i data-lucide="pipette" class="w-3.5 h-3.5 text-accent" aria-hidden="true"></i>
+            </button>
             <button type="button" class="lumen-btn-secondary px-2 py-1 text-xs" id="zoom-fit-btn">Ajustar</button>
             <button type="button" class="lumen-btn-secondary px-2 py-1 text-xs" id="zoom-100-btn">100%</button>
             <button type="button" class="lumen-btn-secondary p-1" id="zoom-out-btn"><i data-lucide="zoom-out" class="w-3.5 h-3.5" aria-hidden="true"></i></button>
             <button type="button" class="lumen-btn-secondary p-1" id="zoom-in-btn"><i data-lucide="zoom-in" class="w-3.5 h-3.5" aria-hidden="true"></i></button>
             <button type="button" class="lumen-btn-secondary p-1.5" id="toggle-histogram-btn" title="Exibir histograma e avisos de clipping">
               <i data-lucide="bar-chart-2" class="w-3.5 h-3.5 text-accent" aria-hidden="true"></i>
+            </button>
+            <span class="h-4 w-px bg-border mx-0.5" aria-hidden="true"></span>
+            <button type="button" class="lumen-btn-secondary px-2 py-1 text-xs font-semibold text-accent" id="export-psd-btn" title="Exportar Photoshop PSD com Camadas e Passes">
+              <i data-lucide="layers" class="w-3 h-3 text-accent inline mr-1" aria-hidden="true"></i>PSD
+            </button>
+            <button type="button" class="lumen-btn-secondary px-2 py-1 text-xs font-semibold" id="export-tiff-btn" title="Exportar TIFF 16-bit com Metadados Hasselblad">
+              TIFF
             </button>
           </div>
         </div>
@@ -653,7 +693,23 @@
           <div id="state-success" class="hidden w-full h-full flex flex-col items-center justify-between gap-4">
             <div class="lumen-photo-viewport" id="photo-viewport">
               <!-- Visualização Normal -->
-              <img id="result-image" class="lumen-photo-img" alt="Fotografia produzida no estúdio LUMEN" />
+              <div class="relative inline-flex items-center justify-center max-w-full max-h-[62vh]" id="photo-canvas-wrapper">
+                <img id="result-image" class="lumen-photo-img" alt="Fotografia produzida no estúdio LUMEN" />
+                <!-- Overlay de Alfinetes Interativos de Feedback (Capture One Live) -->
+                <div id="review-pins-overlay" class="review-pins-overlay hidden" aria-label="Alfinetes de feedback"></div>
+                <!-- Alvo Flutuante ColorChecker 24 Patches -->
+                <div id="colorchecker-palette" class="hidden absolute top-3 left-3 z-30 p-2.5 rounded-lg bg-surface/95 border border-border shadow-xl flex flex-col gap-2 backdrop-blur">
+                  <div class="flex items-center justify-between gap-3 border-b border-border pb-1">
+                    <span class="text-[11px] font-bold text-accent">ColorChecker 18% Neutro</span>
+                    <button type="button" id="close-colorchecker-btn" class="text-text-muted hover:text-ivory text-xs px-1">&times;</button>
+                  </div>
+                  <div class="colorchecker-grid-24" id="colorchecker-swatches-container"></div>
+                  <div class="text-[10px] text-text-muted leading-tight max-w-[140px]">
+                    Clique na foto com a pipeta para calibrar o balanço de branco.
+                  </div>
+                  <div id="colorchecker-status" class="text-[10px] font-mono text-accent hidden"></div>
+                </div>
+              </div>
 
               <!-- Visualização Split Slider (Antes / Depois) -->
               <div id="split-comparator-box" class="hidden lumen-split-container">
@@ -858,6 +914,174 @@
             <div id="social-pack-results-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <div class="p-8 text-center text-xs text-text-muted border border-dashed border-border rounded-lg col-span-full">
                 Abra ou gere uma fotografia no Studio e clique em <strong>Gerar Pacote Multiformato</strong> para adaptar a imagem em 4:5, 9:16, 1:1 e 16:9 sem distorção.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= ÁREA 5: NEURAL RELIGHTING DE FOTOS REAIS ================= -->
+      <div id="view-relight" class="hidden flex flex-col gap-4">
+        <div class="pb-3 border-b border-border flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-lg font-bold text-ivory m-0 font-editorial">Neural Relighting de Fotos Reais</h2>
+            <p class="text-xs text-text-muted m-0">Faça upload de qualquer foto de estúdio, produto em fundo branco ou retrato real para reiluminar com a orientação do Radar 360°, preservando o sujeito e a geometria.</p>
+          </div>
+          <button type="button" id="run-relight-btn" class="lumen-btn-primary w-auto px-4 py-2 text-xs" disabled>
+            <i data-lucide="wand-2" class="w-4 h-4" aria-hidden="true"></i>
+            <span>Reiluminar Foto com Radar 360°</span>
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div class="p-4 rounded-lg bg-surface border border-border flex flex-col gap-3">
+            <span class="text-xs font-bold text-ivory uppercase tracking-wider">Foto Original</span>
+            <input type="file" id="relight-file-input" accept="image/*" class="hidden" />
+            <div id="relight-dropzone" class="relight-dropzone flex flex-col items-center justify-center gap-2">
+              <i data-lucide="upload-cloud" class="w-8 h-8 text-accent" aria-hidden="true"></i>
+              <span class="text-xs font-semibold text-ivory">Clique ou arraste uma foto aqui</span>
+              <span class="text-[11px] text-text-muted">Formatos JPG, PNG ou WEBP</span>
+            </div>
+            <div id="relight-preview-wrap" class="hidden flex flex-col items-center gap-2">
+              <img id="relight-preview-img" class="max-h-48 rounded border border-border object-contain" alt="Original" />
+              <button type="button" id="relight-clear-btn" class="lumen-btn-secondary text-[11px] py-1 px-2 text-danger">Trocar foto</button>
+            </div>
+
+            <div class="pt-2 border-t border-border flex flex-col gap-2">
+              <label class="flex items-center gap-2 text-xs cursor-pointer">
+                <input type="checkbox" id="relight-preserve-identity" checked class="rounded border-border text-accent focus:ring-0" />
+                <span class="text-ivory font-semibold">Preservação estrita de geometria, rosto e logotipos</span>
+              </label>
+              <label class="text-[11px] text-text-secondary block">Instrução Criativa Adicional (Opcional):</label>
+              <input type="text" id="relight-context-prompt" placeholder="Ex: Clima de chuva suave, atmosfera noturna…" class="w-full bg-bg border border-border rounded px-2.5 py-1.5 text-xs text-ivory" />
+            </div>
+          </div>
+
+          <div class="lg:col-span-2 flex flex-col gap-3">
+            <div id="relight-results-empty" class="p-12 text-center text-xs text-text-muted border border-dashed border-border rounded-lg h-full flex flex-col items-center justify-center">
+              Faça upload de uma foto ao lado e clique em <strong>Reiluminar Foto</strong> para ver a iluminação física aplicada diretamente à sua imagem real.
+            </div>
+            <div id="relight-results-container" class="hidden flex flex-col gap-3">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-accent" id="relight-status-badge">Foto Reiluminada com Sucesso</span>
+                <div class="flex items-center gap-2">
+                  <button type="button" id="relight-send-to-studio-btn" class="lumen-btn-secondary text-xs">Enviar para Studio</button>
+                  <button type="button" id="relight-download-btn" class="lumen-btn-primary w-auto text-xs px-3">Baixar Resultado</button>
+                </div>
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="flex flex-col items-center gap-1.5 p-2 rounded bg-surface border border-border">
+                  <span class="text-xs font-mono text-text-muted">Antes (Original)</span>
+                  <img id="relight-res-before-img" class="max-h-[55vh] object-contain rounded" alt="Original" />
+                </div>
+                <div class="flex flex-col items-center gap-1.5 p-2 rounded bg-surface border border-accent/40">
+                  <span class="text-xs font-mono text-accent">Depois (Nova Iluminação 360°)</span>
+                  <img id="relight-res-after-img" class="max-h-[55vh] object-contain rounded shadow-lg" alt="Reiluminada" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= ÁREA 6: LOOKBOOK ENGINE (CONSISTÊNCIA MULTIDISPARO) ================= -->
+      <div id="view-lookbook" class="hidden flex flex-col gap-4">
+        <div class="pb-3 border-b border-border flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-lg font-bold text-ivory m-0 font-editorial">Lookbook Engine Comercial</h2>
+            <p class="text-xs text-text-muted m-0">Gere um ensaio completo consistente (6 ângulos pré-calibrados) mantendo a mesma modelo ou produto sob a mesma luz.</p>
+          </div>
+          <button type="button" id="generate-lookbook-btn" class="lumen-btn-primary w-auto px-4 py-2 text-xs">
+            <i data-lucide="book-open" class="w-4 h-4" aria-hidden="true"></i>
+            <span>Gerar Lookbook (6 Ângulos)</span>
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+          <div class="p-3.5 rounded-lg bg-surface border border-border flex flex-col gap-3">
+            <span class="text-xs font-bold text-ivory uppercase tracking-wider">Sujeito do Lookbook</span>
+            <div>
+              <label class="text-[11px] text-text-secondary block mb-1">Descrição / Identidade Fixa:</label>
+              <textarea id="lookbook-prompt-input" rows="3" class="lumen-textarea text-xs" placeholder="Ex: Modelo brasileira vestindo blazer bege de linho, expressão elegante e natural…"></textarea>
+            </div>
+            <div class="flex flex-col gap-1.5 pt-2 border-t border-border">
+              <span class="text-[11px] font-semibold text-ivory">Ângulos de Câmera Selecionados:</span>
+              <label class="flex items-center gap-2 text-xs cursor-pointer"><input type="checkbox" value="frontal_beauty" checked class="lookbook-angle-checkbox" /> <span>Retrato Frontal (85mm f/1.8)</span></label>
+              <label class="flex items-center gap-2 text-xs cursor-pointer"><input type="checkbox" value="three_quarters" checked class="lookbook-angle-checkbox" /> <span>Três Quartos (50mm f/2.8)</span></label>
+              <label class="flex items-center gap-2 text-xs cursor-pointer"><input type="checkbox" value="macro_texture" checked class="lookbook-angle-checkbox" /> <span>Close-up Macro (105mm f/2.8)</span></label>
+              <label class="flex items-center gap-2 text-xs cursor-pointer"><input type="checkbox" value="full_body" checked class="lookbook-angle-checkbox" /> <span>Corpo Inteiro (35mm f/4)</span></label>
+              <label class="flex items-center gap-2 text-xs cursor-pointer"><input type="checkbox" value="low_angle_hero" checked class="lookbook-angle-checkbox" /> <span>Contra-plongée (24mm f/2.8)</span></label>
+              <label class="flex items-center gap-2 text-xs cursor-pointer"><input type="checkbox" value="profile_rim" checked class="lookbook-angle-checkbox" /> <span>Perfil de Silhueta (90mm f/2.0)</span></label>
+            </div>
+          </div>
+
+          <div class="lg:col-span-3">
+            <div id="lookbook-empty-state" class="p-12 text-center text-xs text-text-muted border border-dashed border-border rounded-lg">
+              Configure a identidade e clique em <strong>Gerar Lookbook</strong> para criar a coleção fotográfica de 6 ângulos coerentes.
+            </div>
+            <div id="lookbook-grid" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= ÁREA 7: LIVE REVIEW & APROVAÇÃO DE CLIENTE ================= -->
+      <div id="view-review" class="hidden flex flex-col gap-4">
+        <div class="pb-3 border-b border-border flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-lg font-bold text-ivory m-0 font-editorial">Sessão de Aprovação de Estúdio (Capture One Live)</h2>
+            <p class="text-xs text-text-muted m-0">Ambiente colaborativo remoto com votação por estrelas, status de aprovação e alfinetes de anotação na imagem.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button type="button" id="copy-client-review-link-btn" class="lumen-btn-secondary text-xs">
+              <i data-lucide="share-2" class="w-3.5 h-3.5 text-accent" aria-hidden="true"></i>
+              <span>Copiar Link de Aprovação</span>
+            </button>
+            <button type="button" id="send-studio-to-review-btn" class="lumen-btn-primary w-auto text-xs px-3">
+              <i data-lucide="plus" class="w-3.5 h-3.5" aria-hidden="true"></i>
+              <span>Enviar Foto Atual</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div class="lg:col-span-2 p-3 rounded-lg bg-surface border border-border flex flex-col gap-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-semibold text-ivory" id="review-active-item-title">Produção em Revisão</span>
+                <span id="review-status-tag" class="text-[10px] font-mono px-2 py-0.5 rounded bg-bg border border-border text-text-muted">Aguardando Avaliação</span>
+              </div>
+              <div class="flex items-center gap-1" id="review-stars-bar">
+                <button type="button" class="rating-star-btn" data-star="1"><i data-lucide="star" class="w-4 h-4"></i></button>
+                <button type="button" class="rating-star-btn" data-star="2"><i data-lucide="star" class="w-4 h-4"></i></button>
+                <button type="button" class="rating-star-btn" data-star="3"><i data-lucide="star" class="w-4 h-4"></i></button>
+                <button type="button" class="rating-star-btn" data-star="4"><i data-lucide="star" class="w-4 h-4"></i></button>
+                <button type="button" class="rating-star-btn" data-star="5"><i data-lucide="star" class="w-4 h-4"></i></button>
+              </div>
+            </div>
+
+            <div class="relative flex items-center justify-center bg-bg rounded overflow-hidden min-h-[420px]" id="review-stage-wrap">
+              <img id="review-stage-img" class="max-h-[58vh] object-contain rounded" alt="Item em Revisão" />
+              <div id="review-stage-pins-overlay" class="review-pins-overlay"></div>
+            </div>
+
+            <div class="flex items-center justify-between pt-1">
+              <span class="text-[11px] text-text-muted">Clique em qualquer ponto da foto acima para criar um alfinete de anotação.</span>
+              <div class="flex items-center gap-2">
+                <button type="button" id="review-status-reject" class="lumen-btn-secondary text-xs text-danger">Rejeitar</button>
+                <button type="button" id="review-status-needs-work" class="lumen-btn-secondary text-xs text-warning">Pedir Ajustes</button>
+                <button type="button" id="review-status-approve" class="lumen-btn-primary w-auto text-xs px-3" style="background-color: var(--color-success); border-color: var(--color-success); color: #fff;">Aprovar Foto</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="p-3 rounded-lg bg-surface border border-border flex flex-col gap-3">
+            <span class="text-xs font-bold text-ivory uppercase tracking-wider flex items-center justify-between">
+              <span>Alfinetes de Feedback</span>
+              <span id="review-pins-count" class="font-mono text-accent">0</span>
+            </span>
+            <div id="review-pins-list" class="flex flex-col gap-2 overflow-y-auto max-h-[60vh]">
+              <div class="text-center text-xs text-text-muted py-8" id="review-pins-empty-notice">
+                Nenhum alfinete criado. Clique na foto para apontar ajustes de luz ou enquadramento.
               </div>
             </div>
           </div>

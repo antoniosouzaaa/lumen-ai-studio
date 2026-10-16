@@ -918,3 +918,168 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* ==============================================================================
+   LUMEN STUDIO PRO (FASE 8): REVIEW PINS, COLORCHECKER, LOOKBOOK & RELIGHT
+   ============================================================================== */
+
+/* Alfinetes Interativos de Feedback do Cliente (Capture One Live) */
+.review-pins-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 25;
+}
+
+.review-pin-marker {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background-color: var(--color-accent);
+  color: var(--color-accent-text);
+  border: 2px solid #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  pointer-events: auto;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+  transition: transform 150ms ease, background-color 150ms ease;
+  animation: lumen-pin-pulse 2s infinite;
+}
+
+.review-pin-marker:hover {
+  transform: translate(-50%, -50%) scale(1.18);
+  background-color: #ffd166;
+}
+
+.review-pin-marker.is-resolved {
+  background-color: var(--color-success);
+  opacity: 0.75;
+  animation: none;
+}
+
+@keyframes lumen-pin-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(232, 176, 74, 0.6); }
+  70% { box-shadow: 0 0 0 10px rgba(232, 176, 74, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(232, 176, 74, 0); }
+}
+
+.review-pin-card {
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.review-pin-card.is-resolved {
+  opacity: 0.6;
+  border-color: var(--color-success);
+}
+
+/* ColorChecker Virtual e Pipeta 18% */
+.colorchecker-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-family: var(--font-mono);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+}
+
+.colorchecker-grid-24 {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 3px;
+  padding: 4px;
+  background-color: #111113;
+  border: 1px solid #333336;
+  border-radius: 4px;
+  width: 140px;
+}
+
+.colorchecker-swatch {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: transform 100ms ease;
+}
+
+.colorchecker-swatch:hover {
+  transform: scale(1.15);
+  z-index: 2;
+  box-shadow: 0 0 4px #ffffff;
+}
+
+/* Modo Pipeta Ativa no Canvas */
+.is-pipette-active {
+  cursor: crosshair !important;
+}
+
+/* Dropzone de Reiluminação Neural */
+.relight-dropzone {
+  border: 2px dashed var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  padding: 32px 20px;
+  text-align: center;
+  background-color: var(--color-surface);
+  cursor: pointer;
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+
+.relight-dropzone:hover,
+.relight-dropzone.is-dragover {
+  border-color: var(--color-accent);
+  background-color: var(--color-surface-active);
+}
+
+/* Lookbook Grid */
+.lookbook-plate-card {
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.lookbook-plate-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-panel);
+  border-color: var(--color-border-strong);
+}
+
+.lookbook-plate-thumb {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  background-color: var(--color-bg);
+}
+
+/* Estrelas de Avaliação */
+.rating-star-btn {
+  background: transparent;
+  border: 0;
+  padding: 2px;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  transition: color 100ms ease, transform 100ms ease;
+}
+
+.rating-star-btn:hover,
+.rating-star-btn.is-active {
+  color: var(--color-accent);
+  transform: scale(1.15);
+}
