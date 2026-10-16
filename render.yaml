@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: lumen-ai-studio
+    runtime: docker
+    plan: free
+    autoDeploy: true
+    healthCheckPath: /health
+    envVars:
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: PORT
+        value: 8000

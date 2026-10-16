@@ -1,0 +1,559 @@
+:root {
+  /* Paleta Principal LUMEN */
+  --color-bg: #101110;
+  --color-bg-elevated: #151714;
+  --color-surface: #1B1D19;
+  --color-surface-hover: #22251F;
+  --color-surface-active: #292D25;
+  --color-border: #30332C;
+  --color-border-strong: #45493F;
+  --color-text: #F3F1EA;
+  --color-text-secondary: #B7B9B0;
+  --color-text-muted: #85877F;
+  --color-accent: #D8FF63;
+  --color-accent-hover: #E3FF8A;
+  --color-accent-pressed: #C4EB4F;
+  --color-accent-text: #171A12;
+  --color-ivory: #F3F1EA;
+  --color-stone: #85877F;
+
+  /* Cores Semânticas */
+  --color-success: #9BE28C;
+  --color-warning: #F0C674;
+  --color-danger: #FF8178;
+  --color-info: #8FCBFF;
+  --color-focus: #D8FF63;
+
+  /* Raios e Sombras */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-pill: 999px;
+  --shadow-panel: 0 8px 28px rgba(0, 0, 0, 0.18);
+  --shadow-overlay: 0 18px 60px rgba(0, 0, 0, 0.42);
+
+  /* Tipografia */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color-scheme: dark;
+  min-height: 100vh;
+}
+
+/* Foco Acessível WCAG 2.2 AA */
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-focus) !important;
+  outline-offset: 2px !important;
+}
+
+/* Tipografia Técnica */
+.font-mono-tech {
+  font-family: var(--font-mono);
+}
+
+/* Header Compacto (60px-68px) */
+.lumen-header {
+  height: 64px;
+  background-color: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+
+.lumen-brand-wordmark {
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: var(--color-ivory);
+  line-height: 1;
+}
+
+.lumen-brand-descriptor {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+}
+
+.lumen-brand-slogan {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  font-style: normal;
+  letter-spacing: 0.02em;
+}
+
+/* Layout Principal (Sidebar + Workspace) */
+.lumen-layout {
+  display: grid;
+  grid-template-columns: 332px minmax(0, 1fr);
+  min-height: calc(100vh - 64px);
+}
+
+@media (max-width: 1024px) {
+  .lumen-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Sidebar de Controles */
+.lumen-sidebar {
+  background-color: var(--color-bg);
+  border-right: 1px solid var(--color-border);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  overflow-y: auto;
+  max-height: calc(100vh - 64px);
+}
+
+@media (max-width: 1024px) {
+  .lumen-sidebar {
+    max-height: none;
+    border-right: none;
+    border-bottom: 1px solid var(--color-border);
+  }
+}
+
+.lumen-section-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  margin-bottom: 8px;
+}
+
+/* Cards e Botões de Seleção de Câmera */
+.lumen-option-card {
+  appearance: none;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 140ms ease, border-color 140ms ease;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+}
+
+.lumen-option-card:hover:not(:disabled) {
+  background-color: var(--color-surface-hover);
+  border-color: var(--color-border-strong);
+}
+
+.lumen-option-card[aria-pressed="true"],
+.lumen-option-card.is-selected {
+  background-color: var(--color-surface-active);
+  border-color: var(--color-accent);
+}
+
+.lumen-option-card[aria-pressed="true"] .lumen-option-title,
+.lumen-option-card.is-selected .lumen-option-title {
+  color: var(--color-accent);
+}
+
+.lumen-option-title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.lumen-option-sub {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+/* Pílulas de Proporção */
+.lumen-ratio-btn {
+  appearance: none;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 8px 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  text-align: center;
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.lumen-ratio-btn:hover:not(:disabled) {
+  background-color: var(--color-surface-hover);
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
+}
+
+.lumen-ratio-btn[aria-pressed="true"],
+.lumen-ratio-btn.is-selected {
+  background-color: var(--color-surface-active);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+/* Textarea do Briefing Criativo */
+.lumen-textarea {
+  width: 100%;
+  min-height: 156px;
+  resize: vertical;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  line-height: 1.55;
+  transition: border-color 140ms ease, background-color 140ms ease;
+}
+
+.lumen-natural-chip {
+  appearance: none;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  padding: 6px 11px;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.lumen-natural-chip:hover:not(:disabled) {
+  background-color: var(--color-surface-hover);
+  border-color: var(--color-accent);
+  color: var(--color-ivory);
+}
+
+.lumen-natural-chip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.lumen-inspiration-btn {
+  appearance: none;
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 9px 12px;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--color-text-secondary);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.lumen-inspiration-btn:hover:not(:disabled) {
+  background-color: var(--color-surface-hover);
+  border-color: var(--color-border-strong);
+  color: var(--color-ivory);
+}
+
+.lumen-inspiration-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.lumen-textarea::placeholder {
+  color: var(--color-text-muted);
+}
+
+.lumen-textarea:hover:not(:disabled) {
+  border-color: var(--color-border-strong);
+}
+
+.lumen-textarea:focus {
+  border-color: var(--color-accent);
+  background-color: var(--color-bg-elevated);
+}
+
+.lumen-textarea.has-error {
+  border-color: var(--color-warning);
+}
+
+/* Botão Primário Proprietário (48px de altura, #D8FF63) */
+.lumen-btn-primary {
+  height: 48px;
+  width: 100%;
+  background-color: var(--color-accent);
+  color: var(--color-accent-text);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: background-color 140ms ease, transform 80ms ease, opacity 140ms ease;
+}
+
+.lumen-btn-primary:hover:not(:disabled) {
+  background-color: var(--color-accent-hover);
+}
+
+.lumen-btn-primary:active:not(:disabled) {
+  background-color: var(--color-accent-pressed);
+}
+
+.lumen-btn-primary:disabled {
+  background-color: var(--color-surface-active);
+  color: var(--color-text-secondary);
+  border-color: var(--color-border-strong);
+  cursor: not-allowed;
+}
+
+/* Botões Secundários */
+.lumen-btn-secondary {
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 8px 14px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: background-color 140ms ease, border-color 140ms ease;
+}
+
+.lumen-btn-secondary:hover:not(:disabled) {
+  background-color: var(--color-surface-hover);
+  border-color: var(--color-border-strong);
+}
+
+.lumen-btn-secondary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Workspace Principal (Image First) */
+.lumen-workspace {
+  background-color: var(--color-bg);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  overflow-y: auto;
+}
+
+.lumen-stage {
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-panel);
+  min-height: 540px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  padding: 24px;
+}
+
+.lumen-photo-viewport {
+  width: 100%;
+  height: 100%;
+  max-height: 70vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lumen-photo-img {
+  max-width: 100%;
+  max-height: 68vh;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-overlay);
+  display: block;
+}
+
+/* Etapas Reais do Pipeline */
+.lumen-step-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  transition: border-color 160ms ease, color 160ms ease, background-color 160ms ease;
+}
+
+.lumen-step-item.is-active {
+  background-color: var(--color-surface-active);
+  border-color: var(--color-accent);
+  color: var(--color-text);
+}
+
+.lumen-step-item.is-done {
+  border-color: var(--color-border-strong);
+  color: var(--color-text-secondary);
+}
+
+.lumen-step-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-pill);
+  background-color: var(--color-border-strong);
+  flex-shrink: 0;
+}
+
+.lumen-step-item.is-active .lumen-step-dot {
+  background-color: var(--color-accent);
+}
+
+.lumen-step-item.is-done .lumen-step-dot {
+  background-color: var(--color-success);
+}
+
+/* Accordions Expansíveis */
+.lumen-accordion {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.lumen-accordion-trigger {
+  width: 100%;
+  background: transparent;
+  border: none;
+  padding: 14px 18px;
+  color: var(--color-text);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: background-color 140ms ease;
+}
+
+.lumen-accordion-trigger:hover {
+  background-color: var(--color-surface-hover);
+}
+
+.lumen-accordion-body {
+  padding: 0 18px 18px 18px;
+  border-top: 1px solid var(--color-border);
+}
+
+/* Drawer Lateral de Histórico */
+.lumen-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(16, 17, 16, 0.72);
+  backdrop-filter: blur(2px);
+  z-index: 40;
+}
+
+.lumen-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  max-width: 420px;
+  background-color: var(--color-bg-elevated);
+  border-left: 1px solid var(--color-border-strong);
+  box-shadow: var(--shadow-overlay);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Toast Discreto */
+.lumen-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background-color: var(--color-surface-active);
+  color: var(--color-ivory);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-overlay);
+  padding: 10px 16px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Scrollbars Discretas */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: var(--radius-pill);
+}
+
+/* Respeito Estrito a Movimento Reduzido */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

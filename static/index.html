@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LUMEN — AI PHOTOGRAPHY STUDIO</title>
+  <meta name="description" content="LUMEN: AI PHOTOGRAPHY STUDIO. Every image has a light." />
+
+  <!-- Tipografia Oficial: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+
+  <!-- Tailwind CSS via CDN configurado estritamente com os Design Tokens do LUMEN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            bg: 'var(--color-bg)',
+            'bg-elevated': 'var(--color-bg-elevated)',
+            surface: 'var(--color-surface)',
+            'surface-hover': 'var(--color-surface-hover)',
+            'surface-active': 'var(--color-surface-active)',
+            border: 'var(--color-border)',
+            'border-strong': 'var(--color-border-strong)',
+            text: 'var(--color-text)',
+            'text-secondary': 'var(--color-text-secondary)',
+            'text-muted': 'var(--color-text-muted)',
+            accent: 'var(--color-accent)',
+            'accent-hover': 'var(--color-accent-hover)',
+            'accent-pressed': 'var(--color-accent-pressed)',
+            'accent-text': 'var(--color-accent-text)',
+            ivory: 'var(--color-ivory)',
+            stone: 'var(--color-stone)',
+            success: 'var(--color-success)',
+            warning: 'var(--color-warning)',
+            danger: 'var(--color-danger)',
+            info: 'var(--color-info)',
+          },
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+            mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
+          },
+        },
+      },
+    };
+  </script>
+
+  <!-- Estilos e Design Tokens Oficiais do LUMEN -->
+  <link rel="stylesheet" href="/static/css/style.css" />
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-bg text-text antialiased selection:bg-accent selection:text-accent-text">
+
+  <!-- HEADER COMPACTO (64px) -->
+  <header class="lumen-header" role="banner">
+    <div class="flex items-center gap-4">
+      <div class="flex items-baseline gap-3">
+        <span class="lumen-brand-wordmark">LUMEN</span>
+        <span class="lumen-brand-descriptor">AI PHOTOGRAPHY STUDIO</span>
+      </div>
+      <span class="hidden md:inline-block h-3.5 w-px bg-border" aria-hidden="true"></span>
+      <p class="hidden md:block lumen-brand-slogan m-0">Every image has a light.</p>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <!-- Indicador Real de Status (/health) -->
+      <div
+        id="system-status-badge"
+        class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface border border-border text-xs text-text-secondary"
+        role="status"
+        aria-live="polite"
+      >
+        <span
+          id="system-status-dot"
+          class="w-2 h-2 rounded-full"
+          style="background-color: var(--color-stone);"
+          aria-hidden="true"
+        ></span>
+        <span id="system-status-text">Verificando sistema…</span>
+      </div>
+
+      <!-- Botão Drawer de Histórico -->
+      <button
+        type="button"
+        id="open-history-btn"
+        class="lumen-btn-secondary"
+        aria-label="Abrir histórico de produções"
+        aria-expanded="false"
+        aria-controls="history-drawer"
+      >
+        <i data-lucide="archive" class="w-4 h-4 text-text-secondary" aria-hidden="true"></i>
+        <span>Histórico</span>
+        <span
+          id="history-count-badge"
+          class="px-1.5 py-0.5 text-[11px] font-mono rounded bg-surface-active text-text-secondary border border-border"
+        >0</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- LAYOUT PRINCIPAL: SIDEBAR EM LINGUAGEM NATURAL + WORKSPACE -->
+  <div class="lumen-layout">
+
+    <!-- SIDEBAR DE DIREÇÃO EM LINGUAGEM NATURAL -->
+    <aside class="lumen-sidebar" aria-label="Direção criativa em linguagem natural">
+      <form id="production-form" class="flex flex-col gap-5 h-full justify-between" novalidate>
+
+        <div class="flex flex-col gap-5">
+          <!-- Cabeçalho Conversacional da Sidebar -->
+          <div class="flex flex-col gap-1.5">
+            <div class="flex items-center justify-between">
+              <label for="brief-input" class="lumen-section-label m-0">
+                Sua direção em linguagem natural
+              </label>
+              <span class="text-[11px] text-text-muted font-mono">Ctrl + Enter</span>
+            </div>
+            <p class="m-0 text-xs text-text-secondary leading-relaxed">
+              Conte com suas palavras o que você quer ver. O diretor de fotografia interpreta sua ideia e escolhe a luz, o foco e o enquadramento automaticamente.
+            </p>
+          </div>
+
+          <!-- Campo de Texto Principal (Linguagem Natural) -->
+          <div class="flex flex-col">
+            <textarea
+              id="brief-input"
+              name="brief"
+              rows="7"
+              class="lumen-textarea"
+              placeholder="Descreva o sujeito, a cena, a iluminação, o clima e o que a imagem deve transmitir."
+              aria-describedby="brief-validation-alert"
+            ></textarea>
+
+            <div
+              id="brief-validation-alert"
+              class="hidden mt-2 px-3 py-2 rounded-md border text-xs font-medium flex items-center gap-2"
+              style="background-color: rgba(240, 198, 116, 0.08); border-color: var(--color-warning); color: var(--color-warning);"
+              role="alert"
+            >
+              <i data-lucide="alert-circle" class="w-4 h-4 shrink-0" aria-hidden="true"></i>
+              <span id="brief-validation-text">Conte como você imagina a cena antes de disparar a produção.</span>
+            </div>
+          </div>
+
+          <!-- Toques Naturais Opcionais (Frases em linguagem humana para somar ao texto) -->
+          <div class="flex flex-col gap-2">
+            <span class="text-xs font-medium text-text-secondary">
+              Adicionar detalhes naturais ao texto <span class="text-text-muted font-normal">(opcional)</span>
+            </span>
+            <div class="flex flex-wrap gap-1.5" role="group" aria-label="Sugestões em linguagem natural">
+              <button
+                type="button"
+                class="lumen-natural-chip"
+                data-phrase="com luz suave entrando pela janela"
+              >+ Luz suave de janela</button>
+
+              <button
+                type="button"
+                class="lumen-natural-chip"
+                data-phrase="com o fundo bem desfocado destacando o sujeito"
+              >+ Fundo bem desfocado</button>
+
+              <button
+                type="button"
+                class="lumen-natural-chip"
+                data-phrase="no fim de tarde com luz dourada e sombras longas"
+              >+ Luz de fim de tarde</button>
+
+              <button
+                type="button"
+                class="lumen-natural-chip"
+                data-phrase="com clima de cinema à noite e luzes quentes ao fundo"
+              >+ Clima noturno de cinema</button>
+
+              <button
+                type="button"
+                class="lumen-natural-chip"
+                data-phrase="com textura e cores quentes de fotografia analógica"
+              >+ Toque de filme analógico</button>
+
+              <button
+                type="button"
+                class="lumen-natural-chip"
+                data-phrase="em formato horizontal amplo de cinema"
+              >+ Formato horizontal amplo</button>
+
+              <button
+                type="button"
+                class="lumen-natural-chip"
+                data-phrase="em formato vertical para retrato"
+              >+ Formato vertical</button>
+            </div>
+          </div>
+
+          <!-- Inspirações Completas em Linguagem Natural -->
+          <div class="flex flex-col gap-2 pt-1 border-t border-border">
+            <span class="text-xs font-medium text-text-secondary">
+              Ou experimente uma ideia pronta:
+            </span>
+            <div class="flex flex-col gap-1.5">
+              <button
+                type="button"
+                class="lumen-inspiration-btn"
+                data-example="Retrato intimista de uma mulher tomando café perto de uma janela chuvosa pela manhã, expressão serena, fundo bem desfocado e tons quentes acolhedores."
+              >
+                “Retrato intimista perto de uma janela chuvosa pela manhã…”
+              </button>
+
+              <button
+                type="button"
+                class="lumen-inspiration-btn"
+                data-example="Um saxofonista tocando sozinho sob a luz quente de um poste em uma rua de paralelepípedos molhada à noite, atmosfera de cinema clássico em formato horizontal."
+              >
+                “Saxofonista sob a luz de um poste em rua molhada à noite…”
+              </button>
+
+              <button
+                type="button"
+                class="lumen-inspiration-btn"
+                data-example="Uma mesa rústica de madeira ao ar livre no fim da tarde na Toscana, com pão artesanal, azeite e taças de vinho iluminadas pelo sol baixo dourado."
+              >
+                “Mesa rústica ao ar livre iluminada pelo sol dourado de fim de tarde…”
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Botão Primário Proprietário -->
+        <div class="pt-3 border-t border-border">
+          <button
+            type="submit"
+            id="submit-production-btn"
+            class="lumen-btn-primary"
+          >
+            <i data-lucide="aperture" class="w-4 h-4" aria-hidden="true"></i>
+            <span id="submit-btn-label">Disparar produção</span>
+          </button>
+        </div>
+
+      </form>
+    </aside>
+
+    <!-- WORKSPACE PRINCIPAL (IMAGE FIRST) -->
+    <main class="lumen-workspace" id="main-workspace">
+
+      <!-- Alerta de Erro de Execução / Segurança -->
+      <div
+        id="workspace-error-banner"
+        class="hidden px-4 py-3 rounded-lg border flex items-start justify-between gap-3"
+        style="background-color: rgba(255, 129, 120, 0.08); border-color: var(--color-danger); color: var(--color-danger);"
+        role="alert"
+      >
+        <div class="flex items-start gap-2.5">
+          <i data-lucide="alert-triangle" class="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true"></i>
+          <p id="workspace-error-text" class="m-0 text-sm leading-relaxed"></p>
+        </div>
+        <button
+          type="button"
+          id="close-error-btn"
+          class="text-text-secondary hover:text-text p-1 rounded"
+          aria-label="Fechar mensagem de erro"
+        >
+          <i data-lucide="x" class="w-4 h-4" aria-hidden="true"></i>
+        </button>
+      </div>
+
+      <!-- PALCO CENTRAL DA IMAGEM (STAGE) -->
+      <section class="lumen-stage" aria-label="Visualizador principal de fotografia">
+
+        <!-- ESTADO 1: VAZIO (INICIAL) -->
+        <div id="state-empty" class="max-w-md text-center flex flex-col items-center gap-3 px-4">
+          <div class="w-11 h-11 rounded-full bg-surface border border-border flex items-center justify-center mb-1">
+            <i data-lucide="camera" class="w-5 h-5 text-text-secondary" aria-hidden="true"></i>
+          </div>
+          <h1 class="text-xl md:text-2xl font-semibold tracking-tight text-ivory m-0">
+            A imagem começa com uma intenção.
+          </h1>
+          <p class="text-sm text-text-secondary m-0 leading-relaxed">
+            Descreva a cena com suas palavras e deixe o estúdio cuidar da direção fotográfica.
+          </p>
+        </div>
+
+        <!-- ESTADO 2: GERANDO (ETAPAS REAIS VIA STREAMING NDJSON) -->
+        <div id="state-generating" class="hidden w-full max-w-md flex flex-col gap-3" aria-live="polite">
+          <div class="text-center mb-2">
+            <p class="text-xs font-mono uppercase tracking-widest text-text-muted m-0 mb-1">
+              Estúdio em ação
+            </p>
+            <h2 id="generating-live-heading" class="text-base font-medium text-ivory m-0">
+              Preparando direção fotográfica
+            </h2>
+          </div>
+
+          <div class="flex flex-col gap-2.5">
+            <div id="step-item-direction" class="lumen-step-item">
+              <span class="lumen-step-dot" aria-hidden="true"></span>
+              <div class="flex flex-col">
+                <span class="text-xs font-semibold">1. Interpretando sua ideia e definindo a luz</span>
+                <span class="text-xs text-text-muted">Preparando direção fotográfica</span>
+              </div>
+            </div>
+
+            <div id="step-item-imaging" class="lumen-step-item">
+              <span class="lumen-step-dot" aria-hidden="true"></span>
+              <div class="flex flex-col">
+                <span class="text-xs font-semibold">2. Revelando a fotografia</span>
+                <span class="text-xs text-text-muted">Gerando imagem</span>
+              </div>
+            </div>
+
+            <div id="step-item-qa" class="lumen-step-item">
+              <span class="lumen-step-dot" aria-hidden="true"></span>
+              <div class="flex flex-col">
+                <span class="text-xs font-semibold">3. Curadoria visual da imagem</span>
+                <span class="text-xs text-text-muted">Analisando resultado</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ESTADO 3: SUCESSO (FOTOGRAFIA + METADADOS + AÇÕES) -->
+        <div id="state-success" class="hidden w-full h-full flex flex-col items-center justify-between gap-4">
+          <div class="lumen-photo-viewport">
+            <img
+              id="result-image"
+              class="lumen-photo-img"
+              alt="Fotografia produzida no estúdio LUMEN"
+            />
+          </div>
+
+          <!-- Barra Sutil de Metadados Técnicos Decididos pelo Diretor e Ações -->
+          <div class="w-full flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-border">
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-text-muted">Direção escolhida:</span>
+              <span
+                id="result-metadata-bar"
+                class="font-mono-tech text-xs text-text-secondary bg-surface px-3 py-1.5 rounded-md border border-border"
+              ></span>
+            </div>
+
+            <div class="flex items-center gap-2.5">
+              <button
+                type="button"
+                id="new-production-btn"
+                class="lumen-btn-secondary"
+              >
+                <i data-lucide="rotate-ccw" class="w-4 h-4 text-text-secondary" aria-hidden="true"></i>
+                <span>Nova produção</span>
+              </button>
+
+              <button
+                type="button"
+                id="download-image-btn"
+                class="lumen-btn-secondary"
+                style="border-color: var(--color-border-strong);"
+                disabled
+              >
+                <i data-lucide="download" class="w-4 h-4 text-accent" aria-hidden="true"></i>
+                <span>Baixar imagem</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- PAINÉIS COMPLEMENTARES EXPANSÍVEIS (ACCORDIONS) -->
+      <section
+        id="technical-panels"
+        class="hidden grid grid-cols-1 lg:grid-cols-2 gap-4"
+        aria-label="Detalhes da direção e curadoria"
+      >
+        <!-- Accordion 1: Direção Fotográfica -->
+        <div class="lumen-accordion">
+          <button
+            type="button"
+            id="accordion-btn-direction"
+            class="lumen-accordion-trigger"
+            aria-expanded="true"
+            aria-controls="accordion-panel-direction"
+          >
+            <span class="flex items-center gap-2">
+              <i data-lucide="sparkles" class="w-4 h-4 text-text-secondary" aria-hidden="true"></i>
+              <span>Direção fotográfica</span>
+            </span>
+            <i data-lucide="chevron-down" class="w-4 h-4 text-text-muted" aria-hidden="true"></i>
+          </button>
+
+          <div id="accordion-panel-direction" class="lumen-accordion-body">
+            <div class="pt-3 flex flex-col gap-3">
+              <div>
+                <span class="block text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-1">
+                  Como sua ideia foi traduzida em imagem
+                </span>
+                <p id="direction-optics-text" class="m-0 text-sm text-text-secondary leading-relaxed"></p>
+              </div>
+
+              <div>
+                <div class="flex items-center justify-between gap-2 mb-1.5">
+                  <span class="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+                    Prompt fotográfico gerado
+                  </span>
+                  <button
+                    type="button"
+                    id="copy-prompt-btn"
+                    class="lumen-btn-secondary py-1 px-2.5 text-xs"
+                    aria-label="Copiar prompt técnico"
+                  >
+                    <i data-lucide="copy" class="w-3.5 h-3.5 text-text-secondary" aria-hidden="true"></i>
+                    <span>Copiar prompt</span>
+                  </button>
+                </div>
+                <pre
+                  id="direction-prompt-text"
+                  class="m-0 p-3 rounded-md bg-bg border border-border font-mono-tech text-xs text-text-secondary whitespace-pre-wrap break-words leading-relaxed"
+                ></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Accordion 2: Auditoria Visual -->
+        <div class="lumen-accordion">
+          <button
+            type="button"
+            id="accordion-btn-qa"
+            class="lumen-accordion-trigger"
+            aria-expanded="true"
+            aria-controls="accordion-panel-qa"
+          >
+            <span class="flex items-center gap-2">
+              <i data-lucide="scan-eye" class="w-4 h-4 text-text-secondary" aria-hidden="true"></i>
+              <span>Auditoria visual</span>
+            </span>
+            <div class="flex items-center gap-2">
+              <span
+                id="qa-score-pill"
+                class="font-mono-tech text-xs px-2 py-0.5 rounded bg-bg border border-border text-ivory"
+              ></span>
+              <i data-lucide="chevron-down" class="w-4 h-4 text-text-muted" aria-hidden="true"></i>
+            </div>
+          </button>
+
+          <div id="accordion-panel-qa" class="lumen-accordion-body">
+            <!-- Conteúdo quando QA está disponível -->
+            <div id="qa-content-available" class="pt-3 flex flex-col gap-3">
+              <div class="grid grid-cols-1 gap-2.5">
+                <div class="p-2.5 rounded-md bg-bg border border-border">
+                  <span class="block text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-1">
+                    Luz e atmosfera
+                  </span>
+                  <p id="qa-lighting-text" class="m-0 text-xs text-text-secondary leading-relaxed"></p>
+                </div>
+
+                <div class="p-2.5 rounded-md bg-bg border border-border">
+                  <span class="block text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-1">
+                    Enquadramento e foco
+                  </span>
+                  <p id="qa-lens-text" class="m-0 text-xs text-text-secondary leading-relaxed"></p>
+                </div>
+
+                <div class="p-2.5 rounded-md bg-bg border border-border">
+                  <span class="block text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-1">
+                    Percepção geral
+                  </span>
+                  <p id="qa-notes-text" class="m-0 text-xs text-text-secondary leading-relaxed"></p>
+                </div>
+              </div>
+
+              <p class="m-0 text-[11px] text-text-muted italic">
+                Estimativa técnica automatizada via visão computacional.
+              </p>
+            </div>
+
+            <!-- Conteúdo quando QA está indisponível -->
+            <div id="qa-content-unavailable" class="hidden pt-3 flex flex-col gap-2">
+              <div class="p-3 rounded-md bg-bg border border-border text-xs text-text-secondary">
+                Auditoria indisponível
+              </div>
+              <p class="m-0 text-[11px] text-text-muted italic">
+                Estimativa técnica automatizada via visão computacional.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- DRAWER LATERAL DE HISTÓRICO LOCAL (INDEXEDDB) -->
+  <div
+    id="history-drawer-backdrop"
+    class="lumen-drawer-backdrop hidden"
+    aria-hidden="true"
+  ></div>
+
+  <aside
+    id="history-drawer"
+    class="lumen-drawer hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="history-drawer-title"
+  >
+    <div class="p-4 border-b border-border flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <i data-lucide="archive" class="w-4 h-4 text-text-secondary" aria-hidden="true"></i>
+        <h2 id="history-drawer-title" class="text-sm font-semibold text-ivory m-0">
+          Histórico de Produções
+        </h2>
+      </div>
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          id="clear-history-btn"
+          class="lumen-btn-secondary py-1 px-2.5 text-xs text-text-secondary"
+          aria-label="Limpar todo o histórico"
+        >
+          Limpar tudo
+        </button>
+        <button
+          type="button"
+          id="close-history-btn"
+          class="lumen-btn-secondary p-1.5"
+          aria-label="Fechar histórico"
+        >
+          <i data-lucide="x" class="w-4 h-4" aria-hidden="true"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Aviso explícito obrigatório -->
+    <div class="px-4 py-2.5 bg-surface border-b border-border flex items-center gap-2 text-xs text-text-secondary">
+      <i data-lucide="hard-drive" class="w-3.5 h-3.5 text-text-muted shrink-0" aria-hidden="true"></i>
+      <span>O histórico é armazenado exclusivamente neste navegador.</span>
+    </div>
+
+    <!-- Confirmação inline para limpar tudo -->
+    <div
+      id="clear-confirm-box"
+      class="hidden px-4 py-3 bg-surface-active border-b border-border flex items-center justify-between gap-2"
+    >
+      <span class="text-xs text-warning">Confirmar exclusão de todo o histórico?</span>
+      <div class="flex items-center gap-1.5">
+        <button
+          type="button"
+          id="confirm-clear-yes"
+          class="px-2.5 py-1 rounded text-xs font-medium bg-danger text-accent-text"
+        >Excluir</button>
+        <button
+          type="button"
+          id="confirm-clear-no"
+          class="px-2.5 py-1 rounded text-xs bg-surface border border-border text-text-secondary"
+        >Cancelar</button>
+      </div>
+    </div>
+
+    <!-- Lista de Itens do Histórico -->
+    <div id="history-list" class="p-4 flex-1 overflow-y-auto flex flex-col gap-3"></div>
+  </aside>
+
+  <!-- TOAST DISCRETO -->
+  <div
+    id="lumen-toast"
+    class="lumen-toast hidden"
+    role="status"
+    aria-live="polite"
+  >
+    <i data-lucide="check" class="w-4 h-4 text-accent" aria-hidden="true"></i>
+    <span id="lumen-toast-text">Prompt copiado.</span>
+  </div>
+
+  <!-- Scripts da Aplicação -->
+  <script src="/static/js/db.js"></script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
