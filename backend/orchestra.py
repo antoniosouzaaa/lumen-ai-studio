@@ -1468,37 +1468,43 @@ async def _synthesize_pollinations(
     w, h = dim_map.get(requested_ratio, (1024, 1280))
     seed = random.randint(1000, 999999) + seed_offset
     encoded_prompt = urllib.parse.quote(final_prompt)
-    url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width={w}&height={h}&nologo=true&seed={seed}&model=flux"
+    candidate_urls = [
+        f"https://image.pollinations.ai/prompt/{encoded_prompt}?width={w}&height={h}&nologo=true&seed={seed}&model=flux",
+        f"https://image.pollinations.ai/prompt/{encoded_prompt}?width={min(w, 768)}&height={min(h, 960)}&nologo=true&seed={seed}&model=turbo",
+        f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=512&height=640&nologo=true&seed={seed}",
+    ]
 
-    try:
-        async with httpx.AsyncClient(timeout=25.0, follow_redirects=True) as client:
-            resp = await client.get(url)
-            if resp.status_code == 200 and resp.content and len(resp.content) > 1000:
-                ct = resp.headers.get("content-type", "")
-                if "image" in ct or resp.content[:3] in (b"\xff\xd8\xff", b"\x89PN", b"RIF"):
-                    def _strip_logo(raw: bytes) -> bytes:
-                        with Image.open(io.BytesIO(raw)) as im:
-                            iw, ih = im.size
-                            if ih > 100:
-                                cropped = im.crop((0, 0, iw, ih - 38))
-                                buf = io.BytesIO()
-                                cropped.save(buf, format="JPEG", quality=98)
-                                return buf.getvalue()
-                            return raw
+    for url in candidate_urls:
+        try:
+            async with httpx.AsyncClient(timeout=9.0, follow_redirects=True) as client:
+                resp = await client.get(url)
+                if resp.status_code == 200 and resp.content and len(resp.content) > 1000:
+                    ct = resp.headers.get("content-type", "")
+                    if "image" in ct or resp.content[:3] in (b"\xff\xd8\xff", b"\x89PN", b"RIF"):
+                        def _strip_logo(raw: bytes) -> bytes:
+                            with Image.open(io.BytesIO(raw)) as im:
+                                iw, ih = im.size
+                                if ih > 100:
+                                    cropped = im.crop((0, 0, iw, ih - 38))
+                                    buf = io.BytesIO()
+                                    cropped.save(buf, format="JPEG", quality=98)
+                                    return buf.getvalue()
+                                return raw
 
-                    clean_bytes = await asyncio.to_thread(_strip_logo, resp.content)
-                    mastered_bytes = await asyncio.to_thread(
-                        embed_exif_and_crop,
-                        clean_bytes,
-                        requested_ratio,
-                        0.0,
-                        metadata_info,
-                    )
-                    return mastered_bytes, "FLUX.1 Pollinations Studio"
-            else:
-                logger.info("Pollinations indisponível ou limite de taxa (status %s)", resp.status_code)
-    except Exception as exc:
-        logger.info("Falha na chamada ao Pollinations: %s", exc)
+                        clean_bytes = await asyncio.to_thread(_strip_logo, resp.content)
+                        mastered_bytes = await asyncio.to_thread(
+                            embed_exif_and_crop,
+                            clean_bytes,
+                            requested_ratio,
+                            0.0,
+                            metadata_info,
+                        )
+                        return mastered_bytes, "FLUX.1 Pollinations Studio"
+                else:
+                    logger.info("Pollinations url %s retornou status %s", url[:60], resp.status_code)
+        except Exception as exc:
+            logger.info("Tentativa Pollinations falhou: %s", exc)
+
     return None
 
 
@@ -1521,7 +1527,7 @@ async def _synthesize_ai_horde(
     payload = {
         "prompt": final_prompt,
         "params": {
-            "steps": 25,
+            "steps": 20,
             "width": w,
             "height": h,
             "sampler_name": "k_euler",
@@ -1541,7 +1547,7 @@ async def _synthesize_ai_horde(
     headers = {"apikey": "0000000000", "Client-Agent": "LumenStudio:1.0:anon"}
 
     try:
-        async with httpx.AsyncClient(timeout=45.0) as client:
+        async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.post(
                 "https://aihorde.net/api/v2/generate/async",
                 json=payload,
@@ -1554,7 +1560,7 @@ async def _synthesize_ai_horde(
             if not job_id:
                 return None
 
-            for _ in range(25):
+            for _ in range(4):
                 await asyncio.sleep(1.5)
                 chk = await client.get(
                     f"https://aihorde.net/api/v2/generate/check/{job_id}",
@@ -2085,6 +2091,24 @@ async def execute_production_stream(
                         "prompt": v.prompt,
                         "image_base64": base64.b64encode(b).decode("utf-8"),
                     }
+                )
+        elif params.reference_image_base64:
+            # Reilumina a fotografia original enviada pelo usuário preservando 100% de geometria, identidade e produto
+            raw_ref = params.reference_image_base64
+            if "," in raw_ref:
+                raw_ref = raw_ref.split(",", 1)[1]
+            try:
+                ref_bytes = base64.b64decode(raw_ref)
+                relit_bytes, provider_used, fallback_occurred = await run_neural_relight(
+                    ref_bytes, rig, creative_prompt=effective_brief, preserve_identity=True
+                )
+                image_bytes = relit_bytes
+            except Exception as exc:
+                logger.warning("Falha ao reiluminar imagem base: %s. Executando síntese óptica em contingência.", exc)
+                image_bytes, provider_used, fallback_occurred = (
+                    await run_imaging_agent_with_telemetry(
+                        client, direction.final_prompt, direction.aspect_ratio, metadata_info
+                    )
                 )
         else:
             image_bytes, provider_used, fallback_occurred = (
@@ -2682,7 +2706,7 @@ async def run_neural_relight(
         prompt += f" Contextual mood: {creative_prompt.strip()}."
 
     # Tenta Gemini Vision
-    api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    api_key = os.getenv("GEMINI_API_KEY", "").strip() or os.getenv("GOOGLE_API_KEY", "").strip()
     if api_key:
         try:
             client = genai.Client(api_key=api_key)

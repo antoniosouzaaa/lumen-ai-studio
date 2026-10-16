@@ -1015,26 +1015,26 @@
       b.classList.toggle('is-active', b.getAttribute('data-canvas-mode') === mode);
     });
 
+    const canvasWrapper = document.getElementById('photo-canvas-wrapper');
     const normalImg = document.getElementById('result-image');
     const splitBox = document.getElementById('split-comparator-box');
     const sbsBox = document.getElementById('side-by-side-box');
 
-    if (!normalImg || !splitBox || !sbsBox) return;
-
     if (mode === 'split') {
-      normalImg.classList.add('hidden');
-      sbsBox.classList.add('hidden');
-      splitBox.classList.remove('hidden');
+      if (canvasWrapper) canvasWrapper.classList.add('hidden');
+      if (sbsBox) sbsBox.classList.add('hidden');
+      if (splitBox) splitBox.classList.remove('hidden');
       updateSplitView();
     } else if (mode === 'side_by_side') {
-      normalImg.classList.add('hidden');
-      splitBox.classList.add('hidden');
-      sbsBox.classList.remove('hidden');
+      if (canvasWrapper) canvasWrapper.classList.add('hidden');
+      if (splitBox) splitBox.classList.add('hidden');
+      if (sbsBox) sbsBox.classList.remove('hidden');
       updateSideBySideView();
     } else {
-      splitBox.classList.add('hidden');
-      sbsBox.classList.add('hidden');
-      normalImg.classList.remove('hidden');
+      if (splitBox) splitBox.classList.add('hidden');
+      if (sbsBox) sbsBox.classList.add('hidden');
+      if (canvasWrapper) canvasWrapper.classList.remove('hidden');
+      if (normalImg) normalImg.classList.remove('hidden');
     }
   }
 
@@ -1046,8 +1046,17 @@
 
     if (!afterImg) return;
     const curImg = document.getElementById('result-image');
-    if (curImg && curImg.src) afterImg.src = curImg.src;
 
+    // Imagem "Depois" (versão reiluminada/gerada ou foto importada enquanto não houver nova versão)
+    if (curImg && curImg.src && !curImg.src.endsWith('#empty')) {
+      afterImg.src = curImg.src;
+    } else if (state.originalImageBase64) {
+      afterImg.src = state.originalImageBase64.startsWith('data:')
+        ? state.originalImageBase64
+        : `data:${state.originalMimeType || 'image/jpeg'};base64,${state.originalImageBase64}`;
+    }
+
+    // Imagem "Antes" (fotografia original carregada ou versão anterior)
     if (beforeImg) {
       if (state.originalImageBase64) {
         beforeImg.src = state.originalImageBase64.startsWith('data:')
@@ -1060,7 +1069,7 @@
       }
     }
 
-    const pct = state.splitPercent;
+    const pct = typeof state.splitPercent === 'number' ? state.splitPercent : 50;
     if (splitWrap) splitWrap.style.clipPath = `inset(0 ${100 - pct}% 0 0)`;
     if (divider) divider.style.left = `${pct}%`;
   }
@@ -1070,7 +1079,6 @@
     const sbsAfter = document.getElementById('sbs-after-img');
     const curImg = document.getElementById('result-image');
 
-    if (sbsAfter && curImg && curImg.src) sbsAfter.src = curImg.src;
     if (sbsBefore) {
       if (state.originalImageBase64) {
         sbsBefore.src = state.originalImageBase64.startsWith('data:')
@@ -1080,6 +1088,16 @@
         sbsBefore.src = createSafeBlobUrl(state.previousVersion.imageBlob);
       } else if (curImg && curImg.src) {
         sbsBefore.src = curImg.src;
+      }
+    }
+
+    if (sbsAfter) {
+      if (curImg && curImg.src && !curImg.src.endsWith('#empty')) {
+        sbsAfter.src = curImg.src;
+      } else if (state.originalImageBase64) {
+        sbsAfter.src = state.originalImageBase64.startsWith('data:')
+          ? state.originalImageBase64
+          : `data:${state.originalMimeType || 'image/jpeg'};base64,${state.originalImageBase64}`;
       }
     }
   }
@@ -1652,9 +1670,9 @@
     const submitBtn = document.getElementById('submit-production-btn');
     if (submitBtn) submitBtn.disabled = true;
 
-    // Alterna visualizadores de estado
+    // Alterna visualizadores de estado mantendo o palco visível sob o overlay
     document.getElementById('state-empty')?.classList.add('hidden');
-    document.getElementById('state-success')?.classList.add('hidden');
+    document.getElementById('state-success')?.classList.remove('hidden');
     document.getElementById('state-generating')?.classList.remove('hidden');
 
     // Chave de idempotência única por submissão
@@ -1809,7 +1827,7 @@
       if (!recovered) {
         showToast(err.message || 'Falha ao processar produção.');
         document.getElementById('state-generating')?.classList.add('hidden');
-        if (state.currentProduction) {
+        if (state.currentProduction || state.originalImageBase64) {
           document.getElementById('state-success')?.classList.remove('hidden');
         } else {
           document.getElementById('state-empty')?.classList.remove('hidden');
@@ -2239,6 +2257,9 @@
         state.originalImageBase64 = dataUrl;
         state.referenceImageBase64 = dataUrl.split(',')[1];
         state.referenceMimeType = file.type || 'image/jpeg';
+        state.previousVersion = null;
+        state.currentProduction = null;
+        state.activeVersion = null;
 
         const thumb = document.getElementById('intent-thumbnail-img');
         const filename = document.getElementById('intent-filename-text');
@@ -2247,8 +2268,22 @@
         if (filename) filename.textContent = file.name;
         if (filesize) filesize.textContent = `${Math.round(file.size / 1024)} KB · Camadas não-destrutivas ativas`;
 
+        // Atualiza imediatamente todos os visualizadores de palco com a foto importada
         const splitBefore = document.getElementById('split-before-img');
+        const splitAfter = document.getElementById('split-after-img');
+        const resultImg = document.getElementById('result-image');
+        const sbsBefore = document.getElementById('sbs-before-img');
+        const sbsAfter = document.getElementById('sbs-after-img');
+
         if (splitBefore) splitBefore.src = dataUrl;
+        if (splitAfter) splitAfter.src = dataUrl;
+        if (resultImg) resultImg.src = dataUrl;
+        if (sbsBefore) sbsBefore.src = dataUrl;
+        if (sbsAfter) sbsAfter.src = dataUrl;
+
+        // Mantém o palco visível com a foto real
+        document.getElementById('state-empty')?.classList.add('hidden');
+        document.getElementById('state-success')?.classList.remove('hidden');
 
         showToast('Foto importada! Escolha o que deseja melhorar.');
         setStudioStep(2);
@@ -2264,6 +2299,9 @@
         state.originalImageBase64 = plate;
         state.referenceImageBase64 = plate.split(',')[1];
         state.referenceMimeType = 'image/jpeg';
+        state.previousVersion = null;
+        state.currentProduction = null;
+        state.activeVersion = null;
 
         let intentKey = 'light';
         let sampleName = 'Retrato Editorial';
@@ -2286,7 +2324,19 @@
         if (filesize) filesize.textContent = 'Amostra de Estúdio LUMEN · Calibração Linear';
 
         const splitBefore = document.getElementById('split-before-img');
+        const splitAfter = document.getElementById('split-after-img');
+        const resultImg = document.getElementById('result-image');
+        const sbsBefore = document.getElementById('sbs-before-img');
+        const sbsAfter = document.getElementById('sbs-after-img');
+
         if (splitBefore) splitBefore.src = plate;
+        if (splitAfter) splitAfter.src = plate;
+        if (resultImg) resultImg.src = plate;
+        if (sbsBefore) sbsBefore.src = plate;
+        if (sbsAfter) sbsAfter.src = plate;
+
+        document.getElementById('state-empty')?.classList.add('hidden');
+        document.getElementById('state-success')?.classList.remove('hidden');
 
         selectIntentCard(intentKey);
         setStudioStep(2);
@@ -2299,10 +2349,32 @@
       scratchBtn.addEventListener('click', () => {
         state.originalImageBase64 = null;
         state.referenceImageBase64 = null;
+        state.previousVersion = null;
+        state.currentProduction = null;
+        state.activeVersion = null;
+
+        const resultImg = document.getElementById('result-image');
+        const splitBefore = document.getElementById('split-before-img');
+        const splitAfter = document.getElementById('split-after-img');
+        const sbsBefore = document.getElementById('sbs-before-img');
+        const sbsAfter = document.getElementById('sbs-after-img');
+        const thumb = document.getElementById('intent-thumbnail-img');
+
+        if (resultImg) resultImg.removeAttribute('src');
+        if (splitBefore) splitBefore.removeAttribute('src');
+        if (splitAfter) splitAfter.removeAttribute('src');
+        if (sbsBefore) sbsBefore.removeAttribute('src');
+        if (sbsAfter) sbsAfter.removeAttribute('src');
+        if (thumb) thumb.removeAttribute('src');
+
         const filename = document.getElementById('intent-filename-text');
         const filesize = document.getElementById('intent-filesize-text');
         if (filename) filename.textContent = 'Criação do Zero';
         if (filesize) filesize.textContent = 'Sem foto base · Luz e óptica sintetizadas via Radar 360°';
+
+        document.getElementById('state-success')?.classList.add('hidden');
+        document.getElementById('state-empty')?.classList.remove('hidden');
+
         setStudioStep(2);
       });
     }
