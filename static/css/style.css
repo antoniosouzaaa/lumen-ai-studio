@@ -1,59 +1,76 @@
 :root {
   color-scheme: dark;
 
-  /* Tokens Oficiais LUMEN Studio 6.0 (Dark Editorial Studio) */
-  --bg: #0B0B0C;
-  --surface-1: #141416;
-  --surface-2: #1B1B1F;
-  --surface-3: #232329;
-  --ink: #EDEAE3;
-  --muted: #A09C94;
-  --line: #2B2A2F;
-  --accent: #E8B04A;
-  --accent-hover: #F2C36D;
-  --success: #79C99A;
-  --warning: #F0BE62;
-  --danger: #F17D79;
-  --focus: #F5CF82;
+  /* Tokens Oficiais LUMEN Studio AI — Design Refresh */
+  --lumen-bg: #101113;
+  --lumen-surface: #181a1e;
+  --lumen-surface-raised: #202329;
+  --lumen-border: rgba(255, 255, 255, 0.09);
+  --lumen-text: #f5f4f1;
+  --lumen-text-muted: #a6a8ad;
+  --lumen-accent: #d9ff72;
+  --lumen-accent-ink: #171912;
+  --lumen-success: #8dd9a6;
+  --lumen-warning: #f1c77c;
+  --lumen-danger: #ff8585;
 
-  /* Mapeamento Semântico Compatível */
-  --color-bg: var(--bg);
-  --color-bg-elevated: var(--surface-1);
-  --color-surface: var(--surface-2);
-  --color-surface-hover: var(--surface-3);
-  --color-surface-active: #2A2A32;
-  --color-border: var(--line);
-  --color-border-strong: #3E3C46;
-  --color-text: var(--ink);
-  --color-text-secondary: #C6C2B9;
-  --color-text-muted: var(--muted);
-  --color-accent: var(--accent);
-  --color-accent-hover: var(--accent-hover);
-  --color-accent-pressed: #D19934;
-  --color-accent-text: #14120E;
-  --color-ivory: var(--ink);
-  --color-stone: var(--muted);
-  --color-success: var(--success);
-  --color-warning: var(--warning);
-  --color-danger: var(--danger);
-  --color-info: #74B9FF;
-  --color-focus: var(--focus);
-
-  /* Espaçamento e Raios */
   --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 18px;
-  --radius-xl: 22px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
   --radius-pill: 999px;
+
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
   --space-5: 24px;
   --space-6: 32px;
+  --space-7: 48px;
 
-  --shadow-panel: 0 10px 30px rgba(0, 0, 0, 0.28);
-  --shadow-overlay: 0 20px 60px rgba(0, 0, 0, 0.52);
+  --motion-fast: 140ms;
+  --motion-normal: 220ms;
+  --motion-slow: 360ms;
+  --ease-standard: cubic-bezier(.2, .7, .2, 1);
+
+  /* Mapeamento Semântico Compatível com Código Existente */
+  --bg: var(--lumen-bg);
+  --surface-1: var(--lumen-surface);
+  --surface-2: var(--lumen-surface);
+  --surface-3: var(--lumen-surface-raised);
+  --ink: var(--lumen-text);
+  --muted: var(--lumen-text-muted);
+  --line: var(--lumen-border);
+  --accent: var(--lumen-accent);
+  --accent-hover: #e5ff8f;
+  --color-accent-text: var(--lumen-accent-ink);
+  --success: var(--lumen-success);
+  --warning: var(--lumen-warning);
+  --danger: var(--lumen-danger);
+
+  --color-bg: var(--lumen-bg);
+  --color-bg-elevated: var(--lumen-surface);
+  --color-surface: var(--lumen-surface);
+  --color-surface-hover: var(--lumen-surface-raised);
+  --color-surface-active: #262930;
+  --color-border: var(--lumen-border);
+  --color-border-strong: rgba(255, 255, 255, 0.16);
+  --color-text: var(--lumen-text);
+  --color-text-secondary: #c8cbd0;
+  --color-text-muted: var(--lumen-text-muted);
+  --color-accent: var(--lumen-accent);
+  --color-accent-hover: #e6ff94;
+  --color-accent-pressed: #c5ef5b;
+  --color-ivory: var(--lumen-text);
+  --color-stone: var(--lumen-text-muted);
+  --color-success: var(--lumen-success);
+  --color-warning: var(--lumen-warning);
+  --color-danger: var(--lumen-danger);
+  --color-info: #74b9ff;
+  --color-focus: var(--lumen-accent);
+
+  --shadow-panel: 0 10px 30px rgba(0, 0, 0, 0.35);
+  --shadow-overlay: 0 20px 60px rgba(0, 0, 0, 0.6);
 
   /* Tipografia */
   --font-display: 'Cormorant Garamond', Georgia, serif;
@@ -64,44 +81,42 @@
 [data-theme="light"] {
   color-scheme: light;
 
-  --bg: #F3F0E8;
-  --surface-1: #FFFFFF;
-  --surface-2: #F8F6F0;
-  --surface-3: #EEEAE1;
-  --ink: #1B1B1D;
-  --muted: #6F6B62;
-  --line: #DDD6C8;
-  --accent: #9A6612;
-  --accent-hover: #80530D;
-  --success: #246B43;
-  --warning: #80530D;
-  --danger: #A72E2A;
-  --focus: #80530D;
+  --lumen-bg: #f8f7f4;
+  --lumen-surface: #ffffff;
+  --lumen-surface-raised: #f0eee9;
+  --lumen-border: rgba(0, 0, 0, 0.08);
+  --lumen-text: #17181c;
+  --lumen-text-muted: #6b6e75;
+  --lumen-accent: #4d7a00;
+  --lumen-accent-ink: #ffffff;
+  --lumen-success: #1f6b3b;
+  --lumen-warning: #7d5a08;
+  --lumen-danger: #b32626;
 
-  --color-bg: var(--bg);
-  --color-bg-elevated: var(--surface-1);
-  --color-surface: var(--surface-2);
-  --color-surface-hover: var(--surface-3);
-  --color-surface-active: #E5DFD3;
-  --color-border: var(--line);
-  --color-border-strong: #C5BCAE;
-  --color-text: var(--ink);
-  --color-text-secondary: #43403B;
-  --color-text-muted: var(--muted);
-  --color-accent: var(--accent);
-  --color-accent-hover: var(--accent-hover);
-  --color-accent-pressed: #6A4309;
-  --color-accent-text: #FFFFFF;
-  --color-ivory: var(--ink);
-  --color-stone: var(--muted);
-  --color-success: var(--success);
-  --color-warning: var(--warning);
-  --color-danger: var(--danger);
-  --color-info: #1E6091;
-  --color-focus: var(--focus);
+  --color-bg: var(--lumen-bg);
+  --color-bg-elevated: var(--lumen-surface);
+  --color-surface: var(--lumen-surface);
+  --color-surface-hover: var(--lumen-surface-raised);
+  --color-surface-active: #e6e4df;
+  --color-border: var(--lumen-border);
+  --color-border-strong: rgba(0, 0, 0, 0.16);
+  --color-text: var(--lumen-text);
+  --color-text-secondary: #3b3d42;
+  --color-text-muted: var(--lumen-text-muted);
+  --color-accent: var(--lumen-accent);
+  --color-accent-hover: #3d6100;
+  --color-accent-pressed: #2e4a00;
+  --color-accent-text: #ffffff;
+  --color-ivory: var(--lumen-text);
+  --color-stone: var(--lumen-text-muted);
+  --color-success: var(--lumen-success);
+  --color-warning: var(--lumen-warning);
+  --color-danger: var(--lumen-danger);
+  --color-info: #1e6091;
+  --color-focus: var(--lumen-accent);
 
-  --shadow-panel: 0 8px 24px rgba(27, 27, 29, 0.06);
-  --shadow-overlay: 0 18px 48px rgba(27, 27, 29, 0.14);
+  --shadow-panel: 0 8px 24px rgba(23, 24, 28, 0.06);
+  --shadow-overlay: 0 18px 48px rgba(23, 24, 28, 0.12);
 }
 
 *,
@@ -1083,3 +1098,392 @@ body {
   color: var(--color-accent);
   transform: scale(1.15);
 }
+
+/* ==========================================================================
+   LUMEN STUDIO AI — DESIGN REFRESH COMPONENTS & MOTION
+   ========================================================================== */
+
+/* 1. FLUXO GUIADO & IMPORTAÇÃO HERO */
+.lumen-guided-flow {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4) var(--space-7);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  animation: lumenFadeUp var(--motion-normal) var(--ease-standard);
+}
+
+.lumen-dropzone-hero {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-xl);
+  background-color: var(--color-surface);
+  padding: var(--space-7) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  cursor: pointer;
+  position: relative;
+  transition: border-color var(--motion-normal) var(--ease-standard),
+              background-color var(--motion-normal) var(--ease-standard),
+              transform var(--motion-fast) var(--ease-standard);
+}
+
+.lumen-dropzone-hero:hover,
+.lumen-dropzone-hero.is-dragover {
+  border-color: var(--color-accent);
+  background-color: var(--color-surface-hover);
+  transform: translateY(-2px);
+}
+
+/* 2. CARDS DE INTENÇÃO (LUZ, PRODUTO, RETRATO, ESTILO) */
+.lumen-intent-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.lumen-intent-card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  cursor: pointer;
+  text-align: left;
+  transition: all var(--motion-fast) var(--ease-standard);
+  position: relative;
+}
+
+.lumen-intent-card:hover {
+  border-color: var(--color-border-strong);
+  background-color: var(--color-surface-hover);
+  transform: translateY(-2px);
+}
+
+.lumen-intent-card.is-selected {
+  border-color: var(--color-accent);
+  background-color: var(--color-surface-active);
+  box-shadow: 0 0 0 1px var(--color-accent);
+}
+
+.lumen-intent-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-surface-raised);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-accent);
+  margin-bottom: var(--space-1);
+}
+
+/* 3. TRANSPARÊNCIA E LINHA INFORMATIVA */
+.lumen-transparency-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+/* 4. PALCO DO EDITOR CENTRADO NA IMAGEM (65-80% VIEWPORT) */
+.lumen-editor-stage {
+  flex: 1;
+  position: relative;
+  background-color: var(--lumen-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  min-height: 480px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+}
+
+/* COMPARADOR ANTES / DEPOIS INTERATIVO */
+.lumen-compare-container {
+  position: relative;
+  max-width: 100%;
+  max-height: 75vh;
+  user-select: none;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-panel);
+}
+
+.lumen-compare-img {
+  display: block;
+  max-width: 100%;
+  max-height: 75vh;
+  object-fit: contain;
+}
+
+.lumen-compare-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  overflow: hidden;
+  will-change: width;
+}
+
+.lumen-compare-divider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background-color: #ffffff;
+  cursor: ew-resize;
+  transform: translateX(-50%);
+  z-index: 20;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.6);
+}
+
+.lumen-compare-handle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-pill);
+  background-color: #ffffff;
+  color: #111113;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.lumen-compare-label {
+  position: absolute;
+  top: var(--space-3);
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  background-color: rgba(16, 17, 19, 0.75);
+  backdrop-filter: blur(8px);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--color-text);
+  z-index: 10;
+  pointer-events: none;
+}
+
+.lumen-compare-label-original { left: var(--space-3); }
+.lumen-compare-label-result { right: var(--space-3); }
+
+/* 5. PAINEL CONTEXTUAL DIREITO */
+.lumen-context-panel {
+  width: 340px;
+  flex-shrink: 0;
+  background-color: var(--color-bg-elevated);
+  border-left: 1px solid var(--color-border);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  overflow-y: auto;
+}
+
+/* 6. GAVETA DE AJUSTES AVANÇADOS (SLIDE-OVER DRAWER) */
+.lumen-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  justify-content: flex-end;
+  pointer-events: none;
+  visibility: hidden;
+  transition: visibility var(--motion-normal);
+}
+
+.lumen-drawer.is-open {
+  pointer-events: auto;
+  visibility: visible;
+}
+
+.lumen-drawer-backdrop {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  transition: opacity var(--motion-normal) var(--ease-standard);
+}
+
+.lumen-drawer.is-open .lumen-drawer-backdrop {
+  opacity: 1;
+}
+
+.lumen-drawer-panel {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  height: 100%;
+  background-color: var(--color-bg-elevated);
+  border-left: 1px solid var(--color-border);
+  box-shadow: var(--shadow-overlay);
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform var(--motion-normal) var(--ease-standard);
+  overflow-y: auto;
+  padding: var(--space-5);
+  gap: var(--space-4);
+}
+
+.lumen-drawer.is-open .lumen-drawer-panel {
+  transform: translateX(0);
+}
+
+/* 7. BARRA DE AÇÃO INFERIOR */
+.lumen-bottom-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+/* 8. PRESET STRIP COMPACTO */
+.lumen-preset-strip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+}
+
+.lumen-preset-chip {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all var(--motion-fast) var(--ease-standard);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lumen-preset-chip:hover {
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
+  background-color: var(--color-surface-hover);
+}
+
+.lumen-preset-chip.is-active {
+  border-color: var(--color-accent);
+  background-color: var(--color-surface-active);
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+/* 10. MODAIS E DIÁLOGOS GUIADOS (EXPORTAÇÃO, ETC.) */
+.lumen-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(16, 17, 19, 0.78);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--motion-normal) var(--ease-standard);
+}
+
+.lumen-modal-backdrop.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.lumen-modal-card {
+  width: 100%;
+  max-width: 640px;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-overlay);
+  overflow: hidden;
+  transform: scale(0.96) translateY(8px);
+  transition: transform var(--motion-normal) var(--ease-standard);
+}
+
+.lumen-modal-backdrop.is-open .lumen-modal-card {
+  transform: scale(1) translateY(0);
+}
+
+.lumen-export-card {
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  transition: all var(--motion-fast) var(--ease-standard);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  text-align: left;
+}
+
+.lumen-export-card:hover {
+  border-color: var(--color-accent);
+  background-color: var(--color-surface-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.lumen-export-card.is-active {
+  border-color: var(--color-accent);
+  background-color: var(--color-surface-active);
+  box-shadow: 0 0 0 1px var(--color-accent);
+}
+
+/* 11. MOTION ACCESSIBILITY */
+@keyframes lumenFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
