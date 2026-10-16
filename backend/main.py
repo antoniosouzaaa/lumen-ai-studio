@@ -1,6 +1,10 @@
+import asyncio
+import logging
 import os
+from contextlib import asynccontextmanager
 from pathlib import Path
 
+import httpx
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,13 +15,47 @@ from backend.orchestra import ProductionRequest, execute_production_stream
 
 load_dotenv()
 
+logger = logging.getLogger("lumen.main")
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 STATIC_DIR = BASE_DIR / "static"
+
+
+async def keep_alive_loop():
+    """
+    Faz ping periódico na URL externa do Render a cada 10 minutos (600s)
+    para evitar que a instância gratuita entre em hibernação por inatividade (15 min).
+    """
+    await asyncio.sleep(15)
+    while True:
+        target_base = (
+            os.getenv("RENDER_EXTERNAL_URL")
+            or os.getenv("PUBLIC_APP_URL")
+            or "https://lumen-ai-studio.onrender.com"
+        ).rstrip("/")
+        health_url = f"{target_base}/health"
+        try:
+            async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
+                await client.get(health_url, headers={"User-Agent": "LumenKeepAlive/1.0"})
+        except Exception as exc:
+            logger.debug("Keep-alive ping ignorado (%s): %s", health_url, exc)
+        await asyncio.sleep(600)
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    task = asyncio.create_task(keep_alive_loop())
+    try:
+        yield
+    finally:
+        task.cancel()
+
 
 app = FastAPI(
     title="LUMEN: AI PHOTOGRAPHY STUDIO",
     description="Every image has a light.",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(

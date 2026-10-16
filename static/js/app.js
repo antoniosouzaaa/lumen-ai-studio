@@ -646,6 +646,7 @@
     setupAccordions();
     bindEvents();
     await checkSystemHealth();
+    setInterval(checkSystemHealth, 4 * 60 * 1000);
     await refreshHistoryBadge();
   }
 
