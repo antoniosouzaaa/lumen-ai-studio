@@ -72,7 +72,7 @@ body {
   font-family: var(--font-mono);
 }
 
-/* Header Compacto (60px-68px) */
+/* Header Compacto (64px) */
 .lumen-header {
   height: 64px;
   background-color: var(--color-bg);
@@ -112,7 +112,7 @@ body {
 /* Layout Principal (Sidebar + Workspace) */
 .lumen-layout {
   display: grid;
-  grid-template-columns: 332px minmax(0, 1fr);
+  grid-template-columns: 340px minmax(0, 1fr);
   min-height: calc(100vh - 64px);
 }
 
@@ -129,7 +129,7 @@ body {
   padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 18px;
   overflow-y: auto;
   max-height: calc(100vh - 64px);
 }
@@ -152,105 +152,47 @@ body {
   margin-bottom: 8px;
 }
 
-/* Cards e Botões de Seleção de Câmera */
-.lumen-option-card {
-  appearance: none;
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: 10px 12px;
-  color: var(--color-text);
-  text-align: left;
-  cursor: pointer;
-  transition: background-color 140ms ease, border-color 140ms ease;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  width: 100%;
-}
-
-.lumen-option-card:hover:not(:disabled) {
-  background-color: var(--color-surface-hover);
-  border-color: var(--color-border-strong);
-}
-
-.lumen-option-card[aria-pressed="true"],
-.lumen-option-card.is-selected {
-  background-color: var(--color-surface-active);
-  border-color: var(--color-accent);
-}
-
-.lumen-option-card[aria-pressed="true"] .lumen-option-title,
-.lumen-option-card.is-selected .lumen-option-title {
-  color: var(--color-accent);
-}
-
-.lumen-option-title {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--color-text);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.lumen-option-sub {
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-}
-
-/* Pílulas de Proporção */
-.lumen-ratio-btn {
-  appearance: none;
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  padding: 8px 6px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  font-family: var(--font-mono);
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  text-align: center;
-  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
-}
-
-.lumen-ratio-btn:hover:not(:disabled) {
-  background-color: var(--color-surface-hover);
-  border-color: var(--color-border-strong);
-  color: var(--color-text);
-}
-
-.lumen-ratio-btn[aria-pressed="true"],
-.lumen-ratio-btn.is-selected {
-  background-color: var(--color-surface-active);
-  border-color: var(--color-accent);
-  color: var(--color-accent);
-}
-
 /* Textarea do Briefing Criativo */
 .lumen-textarea {
   width: 100%;
-  min-height: 156px;
+  min-height: 132px;
   resize: vertical;
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  padding: 14px;
+  padding: 13px;
   color: var(--color-text);
   font-family: var(--font-sans);
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   line-height: 1.55;
   transition: border-color 140ms ease, background-color 140ms ease;
 }
 
+.lumen-textarea::placeholder {
+  color: var(--color-text-muted);
+}
+
+.lumen-textarea:hover:not(:disabled) {
+  border-color: var(--color-border-strong);
+}
+
+.lumen-textarea:focus {
+  border-color: var(--color-accent);
+  background-color: var(--color-bg-elevated);
+}
+
+.lumen-textarea.has-error {
+  border-color: var(--color-warning);
+}
+
+/* Pílulas e Exemplos em Linguagem Natural */
 .lumen-natural-chip {
   appearance: none;
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-pill);
-  padding: 6px 11px;
-  font-size: 0.75rem;
+  padding: 5px 10px;
+  font-size: 0.725rem;
   color: var(--color-text-secondary);
   cursor: pointer;
   transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
@@ -272,8 +214,8 @@ body {
   background-color: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  padding: 9px 12px;
-  font-size: 0.75rem;
+  padding: 8px 11px;
+  font-size: 0.74rem;
   line-height: 1.45;
   color: var(--color-text-secondary);
   text-align: left;
@@ -292,21 +234,64 @@ body {
   cursor: not-allowed;
 }
 
-.lumen-textarea::placeholder {
-  color: var(--color-text-muted);
+/* Dropzone de Foto de Referência Visual */
+.lumen-ref-dropzone {
+  background-color: var(--color-surface);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: border-color 140ms ease, background-color 140ms ease;
 }
 
-.lumen-textarea:hover:not(:disabled) {
+.lumen-ref-dropzone:hover,
+.lumen-ref-dropzone.is-dragover {
+  background-color: var(--color-surface-hover);
+  border-color: var(--color-accent);
+}
+
+/* Toggle de Modo Prova de Estúdio (Contact Sheet) */
+.lumen-toggle-card {
+  appearance: none;
+  width: 100%;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  transition: background-color 140ms ease, border-color 140ms ease;
+}
+
+.lumen-toggle-card:hover:not(:disabled) {
+  background-color: var(--color-surface-hover);
   border-color: var(--color-border-strong);
 }
 
-.lumen-textarea:focus {
+.lumen-toggle-card[aria-pressed="true"] {
+  background-color: var(--color-surface-active);
   border-color: var(--color-accent);
-  background-color: var(--color-bg-elevated);
 }
 
-.lumen-textarea.has-error {
-  border-color: var(--color-warning);
+.lumen-toggle-indicator {
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--color-border-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.lumen-toggle-card[aria-pressed="true"] .lumen-toggle-indicator {
+  border-color: var(--color-accent);
+  background-color: var(--color-accent);
 }
 
 /* Botão Primário Proprietário (48px de altura, #D8FF63) */
@@ -376,7 +361,7 @@ body {
   padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 18px;
   overflow-y: auto;
 }
 
@@ -385,7 +370,7 @@ body {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-panel);
-  min-height: 540px;
+  min-height: 520px;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -393,27 +378,86 @@ body {
   justify-content: center;
   position: relative;
   overflow: hidden;
-  padding: 24px;
+  padding: 22px;
 }
 
 .lumen-photo-viewport {
   width: 100%;
   height: 100%;
-  max-height: 70vh;
+  max-height: 65vh;
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
 }
 
 .lumen-photo-img {
   max-width: 100%;
-  max-height: 68vh;
+  max-height: 63vh;
   width: auto;
   height: auto;
   object-fit: contain;
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-overlay);
   display: block;
+}
+
+/* Tira de Prova de Estúdio (Contact Sheet) */
+.lumen-contact-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+  max-width: 680px;
+}
+
+.lumen-contact-card {
+  appearance: none;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 6px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+  transition: border-color 140ms ease, background-color 140ms ease;
+}
+
+.lumen-contact-card:hover {
+  background-color: var(--color-surface-hover);
+  border-color: var(--color-border-strong);
+}
+
+.lumen-contact-card.is-active {
+  background-color: var(--color-surface-active);
+  border-color: var(--color-accent);
+}
+
+/* Sliders do Laboratório Darkroom */
+.lumen-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  background: var(--color-border-strong);
+  border-radius: var(--radius-pill);
+}
+
+.lumen-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--color-ivory);
+  border: 2px solid var(--color-bg);
+  cursor: pointer;
+}
+
+.lumen-slider:focus::-webkit-slider-thumb {
+  background: var(--color-accent);
 }
 
 /* Etapas Reais do Pipeline */

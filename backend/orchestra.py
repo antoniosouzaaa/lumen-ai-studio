@@ -7,7 +7,7 @@ import os
 import random
 import re
 import urllib.parse
-from typing import AsyncGenerator, Dict, Any, Literal, Optional
+from typing import AsyncGenerator, Dict, Any, List, Literal, Optional
 
 import httpx
 from dotenv import load_dotenv
@@ -43,12 +43,31 @@ class ProductionRequest(BaseModel):
     aperture: Optional[str] = None
     film: Optional[str] = None
     aspect_ratio: Optional[str] = None
+    # 1. Direção Iterativa ("Conversar com a foto atual")
+    previous_prompt: Optional[str] = None
+    refinement_instruction: Optional[str] = None
+    # 2. Referência Visual por Upload / Clipboard
+    reference_image_base64: Optional[str] = None
+    reference_mime_type: Optional[str] = "image/jpeg"
+    # 3. Modo Prova de Estúdio (Contact Sheet - 3 variações de luz)
+    contact_sheet: bool = False
+
+
+class VariationPrompt(BaseModel):
+    label: str = Field(
+        ...,
+        description="Título curto em português para este estudo de luz (ex: 'Estudo I · Luz Natural', 'Estudo II · Claro-Escuro', 'Estudo III · Fim de Tarde').",
+    )
+    prompt: str = Field(
+        ...,
+        description="Prompt fotográfico completo em inglês correspondente a esta variação de iluminação e atmosfera.",
+    )
 
 
 class DirectorOutput(BaseModel):
     lens: Literal["24mm", "35mm", "50mm", "85mm"] = Field(
         default="35mm",
-        description="Lente escolhida automaticamente pelo diretor a partir da descrição em linguagem natural: 24mm (ampla/ambiente), 35mm (natural/documental), 50mm (clássica/humana) ou 85mm (retrato/close-up).",
+        description="Lente escolhida automaticamente pelo diretor: 24mm (ampla/ambiente), 35mm (natural/documental), 50mm (clássica/humana) ou 85mm (retrato/close-up).",
     )
     aperture: Literal["f/1.4", "f/2.8", "f/8"] = Field(
         default="f/1.4",
@@ -60,7 +79,7 @@ class DirectorOutput(BaseModel):
     )
     aspect_ratio: Literal["16:9", "1:1", "4:5", "9:16"] = Field(
         default="4:5",
-        description="Proporção escolhida conforme o pedido do usuário: 16:9 (horizontal/cinema/paisagem), 1:1 (quadrado), 4:5 (vertical clássico/retrato) ou 9:16 (vertical tela cheia/stories).",
+        description="Proporção escolhida conforme o pedido do usuário: 16:9 (horizontal/cinema/paisagem), 1:1 (quadrado), 4:5 (vertical clássico/retrato) ou 9:16 (vertical tela cheia).",
     )
     camera_optics: str = Field(
         ...,
@@ -69,6 +88,10 @@ class DirectorOutput(BaseModel):
     final_prompt: str = Field(
         ...,
         description="Prompt fotográfico descritivo denso em inglês para síntese de imagem, focado em física da luz, óptica real, composição e textura, sem jargões artificiais de IA.",
+    )
+    variations: List[VariationPrompt] = Field(
+        default_factory=list,
+        description="Quando solicitado modo Prova de Estúdio (contact_sheet), contém 3 variações distintas de iluminação/atmosfera para a mesma cena.",
     )
 
 
@@ -91,11 +114,15 @@ class QAOutput(BaseModel):
         ...,
         description="Observações claras em português brasileiro sobre a naturalidade, texturas e acabamento da fotografia.",
     )
+    improvement_suggestion: str = Field(
+        default="",
+        description="Sugestão curta e prática em linguagem natural (português brasileiro) que o usuário pode aplicar com 1 clique para refinar ainda mais a foto (ex: 'Adicionar contraluz dourada suave para destacar a silhueta').",
+    )
 
 
-DIRECTOR_SYSTEM_PROMPT = """Você é o Diretor de Fotografia do estúdio LUMEN: AI PHOTOGRAPHY STUDIO.
-O usuário descreve a imagem desejada em LINGUAGEM NATURAL, sem precisar saber termos técnicos de câmera.
-Sua missão é interpretar o desejo humano do usuário, decidir automaticamente o melhor conjunto óptico e transformar a ideia em uma fotografia memorável.
+DIRECTOR_SYSTEM_PROMPT = """Você é o Diretor de Fotografia Sênior do estúdio LUMEN: AI PHOTOGRAPHY STUDIO.
+O usuário conversa com você em LINGUAGEM NATURAL, sem precisar usar termos técnicos de câmera.
+Sua missão é interpretar o desejo humano do usuário (e eventual foto de referência ou pedido de ajuste contínuo), decidir automaticamente o melhor conjunto óptico e transformar a ideia em uma fotografia memorável.
 
 REGRAS ESTRITAS E INEGOCIÁVEIS:
 1. Interprete a descrição em linguagem natural e decida automaticamente:
@@ -103,9 +130,14 @@ REGRAS ESTRITAS E INEGOCIÁVEIS:
    - `aperture`: "f/1.4" (quando o usuário pede fundo desfocado, retrato intimista ou destaque no sujeito), "f/2.8" (profundidade moderada), ou "f/8" (quando todo o cenário precisa estar nítido).
    - `film`: "Kodak Portra 400" (luz natural, pele humana, tons quentes, nostalgia, sol), "CineStill 800T" (noite, chuva, neon, bares, luzes artificiais de cinema), ou "Neutro" (estúdio moderno, produto, cores puras).
    - `aspect_ratio`: "16:9" (se pedir horizontal, paisagem, tela larga ou cinema), "1:1" (se pedir quadrado), "9:16" (se pedir tela vertical inteira/celular), ou "4:5" (padrão ideal para retratos e fotografia editorial).
-2. No campo `camera_optics`, escreva em PORTUGUÊS BRASILEIRO de forma natural, clara e elegante (sem excesso de jargão frio), explicando como você traduziu a ideia do usuário em luz, atmosfera e enquadramento.
-3. No campo `final_prompt` (em INGLÊS), descreva a física da luz real (ex: soft diffused window light, golden hour rim light, warm tungsten practical lamps), comportamento óptico da lente e textura orgânica.
-4. PROIBIDO usar palavras vazias de IA no `final_prompt`, tais como: "8k", "4k", "photorealistic", "ultra-detailed", "hyperrealistic", "masterpiece", "unreal engine", "trending on artstation", "octane render", "best quality"."""
+2. Se o usuário enviou uma FOTO DE REFERÊNCIA, analise a direção da luz, a temperatura de cor, as sombras, a atmosfera e a composição da imagem enviada e transfira essa mesma linguagem luminosa para a cena pedida.
+3. Se o usuário enviou um PEDIDO DE AJUSTE (`refinement_instruction`) sobre um `previous_prompt`, mantenha a essência do sujeito e do cenário anterior e modifique cirurgicamente apenas o que foi pedido no ajuste.
+4. Se o modo PROVA DE ESTÚDIO (`contact_sheet=True`) estiver ativo, preencha a lista `variations` com exatamente 3 interpretações luminosas distintas da mesma cena:
+   - Estudo I · Luz Natural & Orgânica (o mesmo que `final_prompt`)
+   - Estudo II · Claro-Escuro Dramático (contraste cinematográfico, sombras profundas, luz direcional intensa)
+   - Estudo III · Atmosfera Analógica Quente (contraluz dourada, halation suave, clima intimista)
+5. No campo `camera_optics`, escreva em PORTUGUÊS BRASILEIRO de forma natural, clara e envolvente, explicando como você traduziu a ideia do usuário em luz, atmosfera e enquadramento.
+6. PROIBIDO usar palavras vazias de IA em `final_prompt` ou `variations`, tais como: "8k", "4k", "photorealistic", "ultra-detailed", "hyperrealistic", "masterpiece", "unreal engine", "trending on artstation", "octane render", "best quality"."""
 
 
 QA_SYSTEM_PROMPT = """Você é o Curador e Auditor Visual do LUMEN: AI PHOTOGRAPHY STUDIO.
@@ -115,7 +147,8 @@ Escreva em PORTUGUÊS BRASILEIRO com linguagem clara, natural e acessível:
 1. `lighting`: como a luz e o clima se comportam na imagem (sombras, brilho, atmosfera).
 2. `lens_coherence`: como ficou o enquadramento, a perspectiva e o desfoque de fundo.
 3. `notes`: percepção geral sobre texturas, naturalidade e expressão da cena.
-4. `score`: nota de 0.0 a 10.0."""
+4. `improvement_suggestion`: uma frase curta de comando em linguagem natural (ex: "Deixar a iluminação mais quente e aproximar o enquadramento no rosto") que o usuário possa clicar para evoluir a foto em uma próxima tomada.
+5. `score`: nota de 0.0 a 10.0."""
 
 
 def sanitize_prompt(prompt: str) -> str:
@@ -127,10 +160,16 @@ def sanitize_prompt(prompt: str) -> str:
     return cleaned.strip(" ,")
 
 
-def crop_to_aspect_ratio(
-    image_bytes: bytes, aspect_ratio: str, trim_border_pct: float = 0.0
+def embed_exif_and_crop(
+    image_bytes: bytes,
+    aspect_ratio: str,
+    trim_border_pct: float = 0.0,
+    metadata_info: Optional[Dict[str, str]] = None,
 ) -> bytes:
-    """Realiza corte central exato (center crop) para a proporção solicitada e salva em JPEG quality=95."""
+    """
+    Realiza corte central exato (center crop) para a proporção solicitada,
+    grava metadados EXIF reais do estúdio LUMEN e salva em JPEG quality=95.
+    """
     ratio_map = {
         "16:9": 16.0 / 9.0,
         "1:1": 1.0,
@@ -169,14 +208,37 @@ def crop_to_aspect_ratio(
         bottom = top + new_height
 
         cropped = img.crop((left, top, right, bottom))
+
+        exif = cropped.getexif()
+        # Tags EXIF padrão TIFF/EXIF:
+        # 0x010F = Make, 0x0110 = Model, 0x0131 = Software, 0x010E = ImageDescription, 0x013B = Artist
+        exif[0x010F] = "LUMEN"
+        exif[0x0110] = "LUMEN AI Photography Studio"
+        exif[0x0131] = "LUMEN Optical Engine v2.0"
+        exif[0x013B] = "LUMEN Studio"
+        if metadata_info:
+            desc = (
+                f"LUMEN | {metadata_info.get('lens', '35mm')} | "
+                f"{metadata_info.get('aperture', 'f/1.4')} | "
+                f"{metadata_info.get('film', 'Kodak Portra 400')} | "
+                f"{metadata_info.get('aspect_ratio', aspect_ratio)}"
+            )
+            exif[0x010E] = desc
+
         output_buffer = io.BytesIO()
-        cropped.save(output_buffer, format="JPEG", quality=95, optimize=True)
+        cropped.save(
+            output_buffer,
+            format="JPEG",
+            quality=95,
+            optimize=True,
+            exif=exif.tobytes(),
+        )
         return output_buffer.getvalue()
 
 
 def center_crop_4_5(image_bytes: bytes) -> bytes:
     """Mantido por compatibilidade estrita com o contrato de corte 4:5 em Pillow."""
-    return crop_to_aspect_ratio(image_bytes, "4:5", trim_border_pct=0.0)
+    return embed_exif_and_crop(image_bytes, "4:5", trim_border_pct=0.0)
 
 
 def get_genai_client() -> genai.Client:
@@ -192,20 +254,43 @@ def get_genai_client() -> genai.Client:
 async def run_director_agent(
     client: genai.Client, params: ProductionRequest
 ) -> DirectorOutput:
-    extra_hints = []
-    if params.lens:
-        extra_hints.append(f"Lente preferida: {params.lens}")
-    if params.aperture:
-        extra_hints.append(f"Abertura preferida: {params.aperture}")
-    if params.film:
-        extra_hints.append(f"Filme preferido: {params.film}")
-    if params.aspect_ratio:
-        extra_hints.append(f"Proporção preferida: {params.aspect_ratio}")
+    contents_list: List[Any] = []
 
-    hints_str = "\n".join(extra_hints)
-    user_content = f"Pedido do usuário em linguagem natural:\n\"{params.brief.strip()}\""
-    if hints_str:
-        user_content += f"\n\nPreferências opcionais informadas:\n{hints_str}"
+    # 2. Se houver imagem de referência enviada pelo usuário, adiciona como Part multimodal
+    if params.reference_image_base64:
+        try:
+            raw_ref = params.reference_image_base64
+            if "," in raw_ref:
+                raw_ref = raw_ref.split(",", 1)[1]
+            ref_bytes = base64.b64decode(raw_ref)
+            ref_mime = params.reference_mime_type or "image/jpeg"
+            contents_list.append(
+                types.Part.from_bytes(data=ref_bytes, mime_type=ref_mime)
+            )
+        except Exception as exc:
+            logger.warning("Não foi possível decodificar imagem de referência: %s", exc)
+
+    prompt_parts = [f"Pedido do usuário em linguagem natural:\n\"{params.brief.strip()}\""]
+
+    if params.previous_prompt and params.refinement_instruction:
+        prompt_parts.append(
+            f"\nDIREÇÃO ITERATIVA (AJUSTE SOBRE A FOTO ATUAL):\n"
+            f"- Prompt fotográfico da tomada anterior: \"{params.previous_prompt}\"\n"
+            f"- Ajuste solicitado pelo usuário agora: \"{params.refinement_instruction.strip()}\"\n"
+            f"Mantenha a consistência da cena anterior e aplique o ajuste solicitado."
+        )
+
+    if params.reference_image_base64:
+        prompt_parts.append(
+            "\nIMAGEM DE REFERÊNCIA ANEXADA: Extraia a atmosfera de iluminação, paleta de cores, contraste e composição da imagem enviada e aplique-as na cena descrita pelo usuário."
+        )
+
+    if params.contact_sheet:
+        prompt_parts.append(
+            "\nMODO PROVA DE ESTÚDIO ATIVO (`contact_sheet=True`): Gere também 3 variações distintas de iluminação no campo `variations`."
+        )
+
+    contents_list.append("\n".join(prompt_parts))
 
     config = types.GenerateContentConfig(
         system_instruction=DIRECTOR_SYSTEM_PROMPT,
@@ -221,12 +306,15 @@ async def run_director_agent(
         try:
             response = await client.aio.models.generate_content(
                 model=model_name,
-                contents=user_content,
+                contents=contents_list,
                 config=config,
             )
             if response and response.text:
                 parsed = DirectorOutput.model_validate_json(response.text)
                 parsed.final_prompt = sanitize_prompt(parsed.final_prompt)
+                for v in parsed.variations:
+                    v.prompt = sanitize_prompt(v.prompt)
+
                 if params.lens in ("24mm", "35mm", "50mm", "85mm"):
                     parsed.lens = params.lens  # type: ignore
                 if params.aperture in ("f/1.4", "f/2.8", "f/8"):
@@ -246,11 +334,13 @@ async def run_director_agent(
 
 
 async def _synthesize_fallback_photograph(
-    final_prompt: str, requested_ratio: str
+    final_prompt: str,
+    requested_ratio: str,
+    metadata_info: Optional[Dict[str, str]] = None,
+    seed_offset: int = 0,
 ) -> bytes:
     """
-    Motor de contingência fotográfica de alta definição caso a chave Google AI
-    esteja no plano gratuito sem faturamento habilitado para o endpoint Imagen 3.
+    Motor de síntese fotográfica de alta definição com corte óptico e gravação EXIF.
     """
     dim_map = {
         "16:9": (1280, 768),
@@ -259,7 +349,7 @@ async def _synthesize_fallback_photograph(
         "9:16": (768, 1280),
     }
     w, h = dim_map.get(requested_ratio, (1024, 1280))
-    seed = random.randint(1000, 999999)
+    seed = random.randint(1000, 999999) + seed_offset
     encoded_prompt = urllib.parse.quote(
         f"Fine art editorial photography, {final_prompt}, authentic optical lens, natural lighting, no text, no watermark"
     )
@@ -274,12 +364,16 @@ async def _synthesize_fallback_photograph(
         raw_bytes = resp.content
 
     return await asyncio.to_thread(
-        crop_to_aspect_ratio, raw_bytes, requested_ratio, 0.06
+        embed_exif_and_crop, raw_bytes, requested_ratio, 0.06, metadata_info
     )
 
 
 async def run_imaging_agent(
-    client: genai.Client, final_prompt: str, requested_ratio: str
+    client: genai.Client,
+    final_prompt: str,
+    requested_ratio: str,
+    metadata_info: Optional[Dict[str, str]] = None,
+    seed_offset: int = 0,
 ) -> bytes:
     api_aspect_ratio = "3:4" if requested_ratio == "4:5" else requested_ratio
 
@@ -290,7 +384,6 @@ async def run_imaging_agent(
         output_mime_type="image/jpeg",
     )
 
-    image_bytes = None
     api_key = os.getenv("GOOGLE_API_KEY", "").strip()
 
     # 1. Tentativa via SDK google-genai (Vertex AI Express ou padrão)
@@ -323,9 +416,13 @@ async def run_imaging_agent(
             image_bytes = (
                 base64.b64decode(raw_bytes) if isinstance(raw_bytes, str) else raw_bytes
             )
-            if requested_ratio == "4:5":
-                image_bytes = await asyncio.to_thread(center_crop_4_5, image_bytes)
-            return image_bytes
+            return await asyncio.to_thread(
+                embed_exif_and_crop,
+                image_bytes,
+                requested_ratio,
+                0.0,
+                metadata_info,
+            )
         except PermissionError:
             raise
         except Exception as exc:
@@ -352,14 +449,19 @@ async def run_imaging_agent(
                             base64.b64decode(raw) if isinstance(raw, str) else raw
                         )
                         return await asyncio.to_thread(
-                            crop_to_aspect_ratio, raw_bytes, requested_ratio, 0.0
+                            embed_exif_and_crop,
+                            raw_bytes,
+                            requested_ratio,
+                            0.0,
+                            metadata_info,
                         )
         except Exception as exc:
             logger.info("Modelo %s indisponível na cota atual: %s", fallback_model, exc)
 
-    # 3. Fallback fotográfico contínuo (garante funcionamento mesmo em chaves Free Tier sem billing)
-    logger.info("Acionando motor fotográfico contínuo para garantir entrega da imagem.")
-    return await _synthesize_fallback_photograph(final_prompt, requested_ratio)
+    # 3. Síntese fotográfica contínua com EXIF e corte Pillow
+    return await _synthesize_fallback_photograph(
+        final_prompt, requested_ratio, metadata_info, seed_offset
+    )
 
 
 async def run_qa_agent(
@@ -373,7 +475,7 @@ async def run_qa_agent(
         f"Pedido original do usuário: {brief.strip()}\n"
         f"Configuração óptica decidida pela direção: {direction.lens} · {direction.aperture} · {direction.film} · {direction.aspect_ratio}\n"
         f"Intenção da direção: {direction.camera_optics}\n\n"
-        "Realize a avaliação visual da fotografia gerada em linguagem clara e natural."
+        "Realize a avaliação visual da fotografia gerada em linguagem clara e natural, incluindo uma sugestão prática de refinamento (`improvement_suggestion`)."
     )
 
     config = types.GenerateContentConfig(
@@ -422,18 +524,33 @@ async def execute_production_stream(
             {
                 "event": "step",
                 "step": "direction",
-                "message": "Preparando direção fotográfica",
+                "message": (
+                    "Ajustando direção fotográfica da cena"
+                    if params.refinement_instruction
+                    else "Preparando direção fotográfica"
+                ),
             }
         )
 
         direction = await run_director_agent(client, params)
 
-        # Etapa 2: Motor Gráfico
+        metadata_info = {
+            "lens": direction.lens,
+            "aperture": direction.aperture,
+            "film": direction.film,
+            "aspect_ratio": direction.aspect_ratio,
+        }
+
+        # Etapa 2: Motor Gráfico (Tomada única ou Prova de Estúdio com 3 variações)
         yield format_ndjson(
             {
                 "event": "step",
                 "step": "imaging",
-                "message": "Gerando imagem",
+                "message": (
+                    "Revelando 3 estudos de luz (Prova de Estúdio)"
+                    if params.contact_sheet
+                    else "Gerando imagem"
+                ),
                 "direction": {
                     "camera_optics": direction.camera_optics,
                     "final_prompt": direction.final_prompt,
@@ -445,11 +562,52 @@ async def execute_production_stream(
             }
         )
 
-        image_bytes = await run_imaging_agent(
-            client, direction.final_prompt, direction.aspect_ratio
-        )
+        contact_sheet_items: List[Dict[str, str]] = []
 
-        # Etapa 3: Auditor de QA Visual Multimodal (Resiliente e Independente)
+        if params.contact_sheet:
+            var_list = direction.variations[:3] if direction.variations else []
+            if len(var_list) < 3:
+                var_list = [
+                    VariationPrompt(
+                        label="Estudo I · Luz Natural",
+                        prompt=direction.final_prompt,
+                    ),
+                    VariationPrompt(
+                        label="Estudo II · Claro-Escuro Dramático",
+                        prompt=f"{direction.final_prompt}, dramatic chiaroscuro lighting, deep sculptural shadows, high contrast",
+                    ),
+                    VariationPrompt(
+                        label="Estudo III · Atmosfera Dourada",
+                        prompt=f"{direction.final_prompt}, warm golden hour backlight, subtle film halation, intimate mood",
+                    ),
+                ]
+
+            tasks = [
+                run_imaging_agent(
+                    client,
+                    v.prompt,
+                    direction.aspect_ratio,
+                    metadata_info,
+                    seed_offset=idx * 101,
+                )
+                for idx, v in enumerate(var_list)
+            ]
+            results_bytes = await asyncio.gather(*tasks)
+            image_bytes = results_bytes[0]
+            for v, b in zip(var_list, results_bytes):
+                contact_sheet_items.append(
+                    {
+                        "label": v.label,
+                        "prompt": v.prompt,
+                        "image_base64": base64.b64encode(b).decode("utf-8"),
+                    }
+                )
+        else:
+            image_bytes = await run_imaging_agent(
+                client, direction.final_prompt, direction.aspect_ratio, metadata_info
+            )
+
+        # Etapa 3: Auditor de QA Visual Multimodal + Loop de Auto-Correção
         yield format_ndjson(
             {
                 "event": "step",
@@ -459,15 +617,48 @@ async def execute_production_stream(
         )
 
         qa_available = True
+        auto_corrected = False
         try:
             qa_result = await run_qa_agent(
                 client, image_bytes, params.brief, direction
             )
+
+            # 6. Loop de Qualidade Automático: se a nota ficar abaixo de 6.8, refina automaticamente 1 vez
+            if (
+                qa_result.score < 6.8
+                and qa_result.improvement_suggestion
+                and not params.contact_sheet
+            ):
+                yield format_ndjson(
+                    {
+                        "event": "step",
+                        "step": "imaging",
+                        "message": "Aperfeiçoando luz automaticamente pela curadoria",
+                    }
+                )
+                refined_prompt = sanitize_prompt(
+                    f"{direction.final_prompt}, {qa_result.improvement_suggestion}"
+                )
+                image_bytes = await run_imaging_agent(
+                    client,
+                    refined_prompt,
+                    direction.aspect_ratio,
+                    metadata_info,
+                    seed_offset=777,
+                )
+                direction.final_prompt = refined_prompt
+                auto_corrected = True
+                qa_result = await run_qa_agent(
+                    client, image_bytes, params.brief, direction
+                )
+
             qa_payload = {
                 "score": qa_result.score,
                 "lighting": qa_result.lighting,
                 "lens_coherence": qa_result.lens_coherence,
                 "notes": qa_result.notes,
+                "improvement_suggestion": qa_result.improvement_suggestion,
+                "auto_corrected": auto_corrected,
             }
         except Exception as qa_exc:
             logger.warning("Auditoria visual indisponível, mantendo imagem: %s", qa_exc)
@@ -477,6 +668,8 @@ async def execute_production_stream(
                 "lighting": "Auditoria indisponível",
                 "lens_coherence": "Auditoria indisponível",
                 "notes": "Auditoria indisponível",
+                "improvement_suggestion": "",
+                "auto_corrected": False,
             }
 
         image_b64 = base64.b64encode(image_bytes).decode("utf-8")
@@ -493,8 +686,13 @@ async def execute_production_stream(
                     },
                     "qa": qa_payload,
                     "qa_available": qa_available,
+                    "contact_sheet": contact_sheet_items,
                     "params": {
-                        "brief": params.brief.strip(),
+                        "brief": (
+                            f"{params.brief.strip()} ({params.refinement_instruction.strip()})"
+                            if params.refinement_instruction
+                            else params.brief.strip()
+                        ),
                         "lens": direction.lens,
                         "aperture": direction.aperture,
                         "film": direction.film,

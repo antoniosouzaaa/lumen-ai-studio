@@ -1,6 +1,6 @@
 /**
  * LUMEN: AI PHOTOGRAPHY STUDIO
- * Persistência Local Resiliente via IndexedDB com suporte a Blobs
+ * Persistência Local Resiliente via IndexedDB com suporte a Blobs e Prova de Estúdio
  */
 
 const DB_NAME = 'LumenStudioDB';
@@ -75,10 +75,22 @@ class LumenDatabase {
         ? productionData.imageBlob
         : this.base64ToBlob(productionData.image_base64, productionData.mime_type || 'image/jpeg');
 
+    const contactSheet = Array.isArray(productionData.contact_sheet)
+      ? productionData.contact_sheet.map((v) => ({
+          label: String(v.label || ''),
+          prompt: String(v.prompt || ''),
+          imageBlob:
+            v.imageBlob instanceof Blob
+              ? v.imageBlob
+              : this.base64ToBlob(v.image_base64, 'image/jpeg'),
+        }))
+      : [];
+
     const record = {
       timestamp: Date.now(),
       imageBlob,
       mime_type: productionData.mime_type || 'image/jpeg',
+      contact_sheet: contactSheet,
       params: {
         brief: String(productionData.params?.brief || ''),
         lens: String(productionData.params?.lens || '35mm'),
@@ -98,6 +110,8 @@ class LumenDatabase {
         lighting: String(productionData.qa?.lighting || 'Auditoria indisponível'),
         lens_coherence: String(productionData.qa?.lens_coherence || 'Auditoria indisponível'),
         notes: String(productionData.qa?.notes || 'Auditoria indisponível'),
+        improvement_suggestion: String(productionData.qa?.improvement_suggestion || ''),
+        auto_corrected: Boolean(productionData.qa?.auto_corrected),
       },
       qa_available: Boolean(productionData.qa_available),
     };
@@ -132,23 +146,6 @@ class LumenDatabase {
 
       request.onerror = (event) => {
         reject(event.target.error || new Error('Falha ao carregar histórico.'));
-      };
-    });
-  }
-
-  async getProductionById(id) {
-    const db = await this.open();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction([STORE_NAME], 'readonly');
-      const store = tx.objectStore(STORE_NAME);
-      const request = store.get(Number(id));
-
-      request.onsuccess = (event) => {
-        resolve(event.target.result || null);
-      };
-
-      request.onerror = (event) => {
-        reject(event.target.error || new Error('Falha ao buscar item no histórico.'));
       };
     });
   }
