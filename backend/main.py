@@ -108,4 +108,7 @@ async def serve_spa():
     index_file = STATIC_DIR / "index.html"
     if not index_file.exists():
         raise HTTPException(status_code=404, detail="Interface não encontrada.")
-    return FileResponse(str(index_file))
+    return FileResponse(
+        str(index_file),
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+    )
