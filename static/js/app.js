@@ -107,6 +107,20 @@
       bw: false,
     },
 
+    // Estado do LUMEN Product Studio AI (E-Commerce)
+    productStudio: {
+      templateId: 'white_market',
+      aspectRatio: '1:1',
+      shadowIntensity: 0.55,
+      reflectionIntensity: 0.25,
+      productScale: 1.0,
+      lightingTemperature: 'neutral',
+      cutoutBase64: null,
+      resultBase64: null,
+      originalBase64: null,
+      isProcessing: false,
+    },
+
     // URLs de Blobs para revogação limpa
     activeBlobUrls: [],
   };
@@ -2312,37 +2326,175 @@
       reader.readAsDataURL(file);
     }
 
+    // =========================================================================
+    // LUMEN PRODUCT STUDIO AI (E-COMMERCE & MARKETPLACES ENGINE)
+    // =========================================================================
+
+    function getTemplateDisplayName(templateId) {
+      const map = {
+        white_market: 'Branco Puro Oficial #FFFFFF (Mercado Livre)',
+        marble_luxury: 'Mármore Carrara & Luxo',
+        minimalist_podium: 'Pódio Minimalista de Estúdio',
+        rustic_wood: 'Madeira Rústica & Café',
+        nature_botanical: 'Botânico & Skincare Natural',
+        studio_grey: 'Cinza Neutro 18%',
+        studio_dark: 'Onyx Dark Tech',
+        transparent: 'Recorte Alpha Transparente',
+      };
+      return map[templateId] || templateId;
+    }
+
+    function triggerBrowserDownload(dataUrlOrBlob, filename) {
+      let url = dataUrlOrBlob;
+      let isBlob = false;
+      if (dataUrlOrBlob instanceof Blob) {
+        url = URL.createObjectURL(dataUrlOrBlob);
+        isBlob = true;
+      }
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      if (isBlob) {
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+      }
+    }
+
+    let debounceProductTimer = null;
+    function debouncedProductStudioProcess() {
+      if (debounceProductTimer) clearTimeout(debounceProductTimer);
+      debounceProductTimer = setTimeout(() => {
+        executeProductStudio();
+      }, 250);
+    }
+
+    async function executeProductStudio(overrideSettings = {}) {
+      if (!state.originalImageBase64) {
+        showToast('Adicione uma foto do produto no Passo 1.');
+        setStudioStep(1);
+        return;
+      }
+
+      const settings = {
+        template_id: overrideSettings.template_id || state.productStudio.templateId || 'white_market',
+        aspect_ratio: overrideSettings.aspect_ratio || state.productStudio.aspectRatio || '1:1',
+        shadow_intensity: overrideSettings.shadow_intensity !== undefined ? overrideSettings.shadow_intensity : state.productStudio.shadowIntensity,
+        reflection_intensity: overrideSettings.reflection_intensity !== undefined ? overrideSettings.reflection_intensity : state.productStudio.reflectionIntensity,
+        product_scale: overrideSettings.product_scale !== undefined ? overrideSettings.product_scale : state.productStudio.productScale,
+        lighting_temperature: overrideSettings.lighting_temperature || state.productStudio.lightingTemperature || 'neutral',
+      };
+
+      const reRenderBtn = document.getElementById('bottom-re-render-btn');
+      if (reRenderBtn) reRenderBtn.classList.add('opacity-50', 'pointer-events-none');
+
+      try {
+        const resp = await fetch('/api/product-studio/process', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            image_base64: state.originalImageBase64,
+            settings: settings,
+          }),
+        });
+
+        if (!resp.ok) {
+          const err = await resp.json().catch(() => ({}));
+          throw new Error(err.detail || 'Erro ao processar estúdio de produto');
+        }
+
+        const data = await resp.json();
+        state.productStudio.resultBase64 = data.result_base64;
+        state.productStudio.cutoutBase64 = data.cutout_base64;
+        state.productStudio.originalBase64 = data.original_base64;
+        state.productStudio.templateId = data.template_id;
+        state.productStudio.aspectRatio = data.aspect_ratio;
+
+        // Atualizar imagens do palco
+        const splitBefore = document.getElementById('split-before-img');
+        const splitAfter = document.getElementById('split-after-img');
+        const resultImg = document.getElementById('result-image');
+        const sbsBefore = document.getElementById('sbs-before-img');
+        const sbsAfter = document.getElementById('sbs-after-img');
+
+        const origSrc = data.original_base64 || state.originalImageBase64;
+        if (splitBefore) splitBefore.src = origSrc;
+        if (splitAfter) splitAfter.src = data.result_base64;
+        if (resultImg) resultImg.src = data.result_base64;
+        if (sbsBefore) sbsBefore.src = origSrc;
+        if (sbsAfter) sbsAfter.src = data.result_base64;
+
+        // Atualizar metadados
+        const metaBar = document.getElementById('result-metadata-bar');
+        const tmplName = getTemplateDisplayName(data.template_id);
+        if (metaBar) {
+          metaBar.textContent = `${data.width}×${data.height}px · ${tmplName} · Renderizado em ${data.processing_time_ms}ms`;
+        }
+        const activeBadge = document.getElementById('active-template-badge');
+        if (activeBadge) activeBadge.textContent = tmplName.split(' ')[0];
+
+        // Sincronizar botões rápidos de cenário
+        document.querySelectorAll('#quick-template-chips button').forEach((btn) => {
+          btn.classList.toggle('is-active', btn.getAttribute('data-tmpl') === data.template_id);
+        });
+
+        // Garantir visualizador visível
+        document.getElementById('state-empty')?.classList.add('hidden');
+        document.getElementById('state-generating')?.classList.add('hidden');
+        document.getElementById('state-success')?.classList.remove('hidden');
+
+        setStudioStep(3);
+        setCanvasMode('split');
+        updateSplitView();
+      } catch (err) {
+        console.error('Falha no estúdio de produto:', err);
+        showToast('Erro: ' + err.message);
+      } finally {
+        if (reRenderBtn) reRenderBtn.classList.remove('opacity-50', 'pointer-events-none');
+      }
+    }
+
     // 2. Chips de Amostra Demo (Passo 1)
     document.querySelectorAll('.lumen-sample-chip').forEach((chip) => {
-      chip.addEventListener('click', () => {
+      chip.addEventListener('click', async () => {
         const sampleType = chip.getAttribute('data-sample');
-        const plate = generateSamplePlate(sampleType);
+        let plate = null;
+        let sampleName = 'Perfume de Luxo';
+
+        if (sampleType === 'perfume') sampleName = 'Perfume de Luxo';
+        else if (sampleType === 'sneaker') sampleName = 'Tênis Streetwear';
+        else if (sampleType === 'serum') sampleName = 'Sérum Skincare';
+        else if (sampleType === 'coffee') sampleName = 'Café Gourmet';
+
+        try {
+          const resp = await fetch('/api/product-studio/samples');
+          if (resp.ok) {
+            const data = await resp.json();
+            const found = data.samples.find((s) => s.id === sampleType);
+            if (found) plate = found.image_base64;
+          }
+        } catch (e) {
+          console.debug('Usando fallback local para amostra:', e);
+        }
+
+        if (!plate) {
+          plate = generateSamplePlate(sampleType);
+        }
+
         state.originalImageBase64 = plate;
         state.referenceImageBase64 = plate.split(',')[1];
-        state.referenceMimeType = 'image/jpeg';
+        state.referenceMimeType = 'image/png';
         state.previousVersion = null;
         state.currentProduction = null;
         state.activeVersion = null;
-
-        let intentKey = 'light';
-        let sampleName = 'Retrato Editorial';
-        if (sampleType === 'portrait') {
-          intentKey = 'portrait';
-          sampleName = 'Retrato Editorial (85mm Rembrandt)';
-        } else if (sampleType === 'perfume' || sampleType === 'sneaker') {
-          intentKey = 'product';
-          sampleName = sampleType === 'perfume' ? 'Garrafa de Perfume Comercial' : 'Tênis Esportivo';
-        } else if (sampleType === 'fashion') {
-          intentKey = 'editorial';
-          sampleName = 'Moda Editorial 35mm';
-        }
 
         const thumb = document.getElementById('intent-thumbnail-img');
         const filename = document.getElementById('intent-filename-text');
         const filesize = document.getElementById('intent-filesize-text');
         if (thumb) thumb.src = plate;
         if (filename) filename.textContent = sampleName;
-        if (filesize) filesize.textContent = 'Amostra de Estúdio LUMEN · Calibração Linear';
+        if (filesize) filesize.textContent = 'Amostra Oficial LUMEN · Alta Fidelidade';
 
         const splitBefore = document.getElementById('split-before-img');
         const splitAfter = document.getElementById('split-after-img');
@@ -2359,112 +2511,36 @@
         document.getElementById('state-empty')?.classList.add('hidden');
         document.getElementById('state-success')?.classList.remove('hidden');
 
-        selectIntentCard(intentKey);
+        showToast(`Amostra "${sampleName}" carregada!`);
         setStudioStep(2);
       });
     });
 
-    // 3. Criar do Zero (Passo 1)
-    const scratchBtn = document.getElementById('start-from-scratch-btn');
-    if (scratchBtn) {
-      scratchBtn.addEventListener('click', () => {
-        state.originalImageBase64 = null;
-        state.referenceImageBase64 = null;
-        state.previousVersion = null;
-        state.currentProduction = null;
-        state.activeVersion = null;
-
-        const resultImg = document.getElementById('result-image');
-        const splitBefore = document.getElementById('split-before-img');
-        const splitAfter = document.getElementById('split-after-img');
-        const sbsBefore = document.getElementById('sbs-before-img');
-        const sbsAfter = document.getElementById('sbs-after-img');
-        const thumb = document.getElementById('intent-thumbnail-img');
-
-        if (resultImg) resultImg.removeAttribute('src');
-        if (splitBefore) splitBefore.removeAttribute('src');
-        if (splitAfter) splitAfter.removeAttribute('src');
-        if (sbsBefore) sbsBefore.removeAttribute('src');
-        if (sbsAfter) sbsAfter.removeAttribute('src');
-        if (thumb) thumb.removeAttribute('src');
-
-        const filename = document.getElementById('intent-filename-text');
-        const filesize = document.getElementById('intent-filesize-text');
-        if (filename) filename.textContent = 'Criação do Zero';
-        if (filesize) filesize.textContent = 'Sem foto base · Luz e óptica sintetizadas via Radar 360°';
-
-        document.getElementById('state-success')?.classList.add('hidden');
-        document.getElementById('state-empty')?.classList.remove('hidden');
-
-        setStudioStep(2);
-      });
-    }
-
-    // 4. Cards de Intenção (Passo 2)
-    function selectIntentCard(intentKey) {
-      state.selectedIntent = intentKey;
-      document.querySelectorAll('.lumen-intent-card').forEach((card) => {
-        const isSelected = card.getAttribute('data-intent') === intentKey;
-        card.classList.toggle('is-selected', isSelected);
-        card.setAttribute('aria-checked', isSelected ? 'true' : 'false');
-      });
-
-      const summary = document.getElementById('intent-proposal-summary');
-      const intentTitle = document.getElementById('editor-intent-title');
-
-      if (intentKey === 'light') {
-        state.lightingRig.key_light.angle_deg = 315;
-        state.lightingRig.key_light.intensity = 85;
-        state.lightingRig.rim_light.intensity = 55;
-        state.camera.lens = '50mm';
-        if (summary) summary.textContent = 'Luz & Atmosfera: Reiluminação com foco em Rembrandt suave a 315° e preenchimento equilibrado.';
-        if (intentTitle) intentTitle.textContent = 'Luz & Atmosfera';
-      } else if (intentKey === 'product') {
-        state.lightingRig.key_light.angle_deg = 45;
-        state.lightingRig.key_light.intensity = 95;
-        state.lightingRig.rim_light.intensity = 70;
-        state.camera.lens = '105mm';
-        if (summary) summary.textContent = 'Foto de Produto: Luz de recorte de catálogo comercial com realce de textura e fundo isolado.';
-        if (intentTitle) intentTitle.textContent = 'Foto de Produto';
-      } else if (intentKey === 'portrait') {
-        state.lightingRig.key_light.angle_deg = 315;
-        state.lightingRig.key_light.softness = 85;
-        state.camera.lens = '85mm';
-        state.camera.aperture = 'f/1.8';
-        if (summary) summary.textContent = 'Retrato Profissional: Iluminação suave envolvente Beauty Dish, tom de pele e separação de fundo.';
-        if (intentTitle) intentTitle.textContent = 'Retrato Profissional';
-      } else if (intentKey === 'editorial') {
-        state.lightingRig.key_light.angle_deg = 90;
-        state.darkroom.contrast = 15;
-        state.darkroom.grain = 25;
-        state.camera.lens = '35mm';
-        if (summary) summary.textContent = 'Estilo Editorial: Atmosfera cinematográfica com grão analógico 35mm e contraste aveludado.';
-        if (intentTitle) intentTitle.textContent = 'Estilo Editorial';
-      }
-
-      syncControlInputsFromRig();
-      renderLightStage();
-      updateSpatialSummaryAndRatio();
-    }
-
-    document.querySelectorAll('.lumen-intent-card').forEach((card) => {
+    // 3. Seleção de Cenário Comercial (Passo 2)
+    document.querySelectorAll('[data-template-id]').forEach((card) => {
       card.addEventListener('click', () => {
-        selectIntentCard(card.getAttribute('data-intent'));
+        const tmplId = card.getAttribute('data-template-id');
+        state.productStudio.templateId = tmplId;
+        document.querySelectorAll('[data-template-id]').forEach((c) => {
+          const isSelected = c.getAttribute('data-template-id') === tmplId;
+          c.classList.toggle('is-selected', isSelected);
+          c.setAttribute('aria-checked', isSelected ? 'true' : 'false');
+        });
       });
     });
 
-    // 5. Instrução Personalizada Opcional (Passo 2)
-    const customToggle = document.getElementById('intent-custom-toggle');
-    const customBox = document.getElementById('intent-custom-box');
-    const customIcon = document.getElementById('intent-custom-icon');
-    if (customToggle && customBox) {
-      customToggle.addEventListener('click', () => {
-        const isHidden = customBox.classList.toggle('hidden');
-        if (customIcon) customIcon.classList.toggle('rotate-90', !isHidden);
+    // 4. Seletor de Formato de Saída (Passo 2)
+    document.querySelectorAll('#template-ratio-group button').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const ratio = btn.getAttribute('data-ratio');
+        state.productStudio.aspectRatio = ratio;
+        document.querySelectorAll('#template-ratio-group button').forEach((b) => {
+          b.classList.toggle('is-active', b === btn);
+        });
       });
-    }
+    });
 
-    // 6. Botões Voltar & Gerar Proposta (Passo 2)
+    // 5. Botões de Navegação & Criar Foto de Estúdio (Passo 2)
     const intentBackBtn = document.getElementById('intent-back-btn');
     if (intentBackBtn) {
       intentBackBtn.addEventListener('click', () => setStudioStep(1));
@@ -2473,29 +2549,7 @@
     const intentGenBtn = document.getElementById('intent-generate-btn');
     if (intentGenBtn) {
       intentGenBtn.addEventListener('click', () => {
-        const customInput = document.getElementById('intent-custom-input');
-        const customText = (customInput?.value || '').trim();
-
-        let generatedBrief = '';
-        if (state.selectedIntent === 'portrait') {
-          generatedBrief = 'Retrato profissional de estúdio fotográfico, iluminação suave Beauty Dish, lente 85mm f/1.8, tom de pele natural com separação suave de fundo';
-        } else if (state.selectedIntent === 'product') {
-          generatedBrief = 'Fotografia comercial de produto em estúdio, fundo limpo de catálogo, iluminação com recorte nítido de material e reflexos controlados';
-        } else if (state.selectedIntent === 'editorial') {
-          generatedBrief = 'Fotografia de moda editorial com estética cinematográfica, grão analógico 35mm, iluminação com contraste elegante e atmosfera de revista';
-        } else {
-          generatedBrief = 'Fotografia de estúdio com reiluminação física equilibrada, luz principal a 315 graus, contraluz rim suave e iluminação de preenchimento';
-        }
-
-        if (customText) {
-          generatedBrief += `. ${customText}`;
-        }
-
-        const briefInput = document.getElementById('brief-input');
-        if (briefInput) briefInput.value = generatedBrief;
-
-        setStudioStep(3);
-        handleProductionSubmit();
+        executeProductStudio();
       });
     }
 
@@ -2580,100 +2634,193 @@
     if (modeSbs) modeSbs.addEventListener('click', () => setCanvasMode('side_by_side'));
     if (modeNormal) modeNormal.addEventListener('click', () => setCanvasMode('normal'));
 
-    // 9. Os 3 Controles Contextuais (Passo 3)
-    const sliderInt = document.getElementById('slider-intensity');
-    const sliderIntVal = document.getElementById('slider-intensity-val');
-    if (sliderInt && sliderIntVal) {
-      sliderInt.addEventListener('input', () => {
-        state.sliderIntensity = parseInt(sliderInt.value, 10);
-        sliderIntVal.textContent = `${sliderInt.value}%`;
+    // 9. Controles Físicos do Produto (Sombra, Reflexo, Escala, Temperatura)
+    const sliderShadow = document.getElementById('slider-shadow');
+    const sliderShadowVal = document.getElementById('slider-shadow-val');
+    if (sliderShadow && sliderShadowVal) {
+      sliderShadow.addEventListener('input', () => {
+        const val = parseInt(sliderShadow.value, 10);
+        state.productStudio.shadowIntensity = val / 100.0;
+        sliderShadowVal.textContent = `${val}%`;
+        debouncedProductStudioProcess();
       });
     }
 
-    const sliderLgt = document.getElementById('slider-light');
-    const sliderLgtVal = document.getElementById('slider-light-val');
-    if (sliderLgt && sliderLgtVal) {
-      sliderLgt.addEventListener('input', () => {
-        const deg = parseInt(sliderLgt.value, 10);
-        state.sliderLight = deg;
-        state.lightingRig.key_light.angle_deg = deg;
-
-        let label = `${deg}°`;
-        if (deg >= 300 && deg <= 330) label = `${deg}° (Esquerda Rembrandt)`;
-        else if (deg >= 30 && deg <= 60) label = `${deg}° (Direita Frontal)`;
-        else if (deg >= 80 && deg <= 100) label = `${deg}° (Split Lateral)`;
-        else if (deg >= 120 && deg <= 160) label = `${deg}° (Contraluz Rim)`;
-        sliderLgtVal.textContent = label;
-
-        const pillKey = document.getElementById('pill-key-angle');
-        if (pillKey) pillKey.textContent = `${deg}°`;
-
-        renderLightStage();
-        updateSpatialSummaryAndRatio();
-      });
-    }
-
-    const sliderBg = document.getElementById('slider-bg');
-    const sliderBgVal = document.getElementById('slider-bg-val');
-    if (sliderBg && sliderBgVal) {
-      sliderBg.addEventListener('input', () => {
-        const val = parseInt(sliderBg.value, 10);
-        state.sliderBg = val;
-        let label = 'Fundo Suave (Bokeh)';
-        if (val < 25) label = 'Fundo Natural Original';
-        else if (val > 75) label = 'Estúdio Comercial Neutro';
-        sliderBgVal.textContent = label;
-      });
-    }
-
-    // 10. Chips de Ajustes Rápidos (Passo 3)
-    document.querySelectorAll('[data-quick-tweak]').forEach((chip) => {
-      chip.addEventListener('click', () => {
-        const tweak = chip.getAttribute('data-quick-tweak');
-        if (tweak === 'warmer') {
-          state.darkroom.warmth = Math.min(40, state.darkroom.warmth + 15);
-          const drW = document.getElementById('dr-warmth');
-          if (drW) drW.value = state.darkroom.warmth;
-          showToast('Tom mais quente aplicado.');
-        } else if (tweak === 'softer') {
-          state.lightingRig.key_light.softness = Math.min(100, state.lightingRig.key_light.softness + 20);
-          syncControlInputsFromRig();
-          renderLightStage();
-          showToast('Luz suave com difusor aplicada.');
-        } else if (tweak === 'dramatic') {
-          state.darkroom.contrast = Math.min(35, state.darkroom.contrast + 15);
-          state.lightingRig.key_light.intensity = Math.min(100, state.lightingRig.key_light.intensity + 15);
-          syncControlInputsFromRig();
-          renderLightStage();
-          showToast('Contraste dramático aplicado.');
-        } else if (tweak === 'clean_bg') {
-          if (sliderBg) sliderBg.value = 95;
-          if (sliderBgVal) sliderBgVal.textContent = 'Estúdio Comercial Neutro';
-          state.sliderBg = 95;
-          showToast('Fundo neutro de estúdio selecionado.');
-        }
+    document.querySelectorAll('[data-shadow-preset]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const val = parseInt(btn.getAttribute('data-shadow-preset'), 10);
+        if (sliderShadow) sliderShadow.value = val;
+        if (sliderShadowVal) sliderShadowVal.textContent = `${val}%`;
+        state.productStudio.shadowIntensity = val / 100.0;
+        executeProductStudio();
       });
     });
 
-    // 11. Refinamento em Linguagem Natural (Conversar com a Foto)
-    const refInput = document.getElementById('refinement-input');
-    const refBtn = document.getElementById('apply-refinement-btn');
-    const triggerRefine = () => {
-      const val = (refInput?.value || '').trim();
-      if (!val) return;
-      const briefInput = document.getElementById('brief-input');
-      if (briefInput) {
-        briefInput.value = briefInput.value ? `${briefInput.value}. Ajuste de estúdio: ${val}` : val;
-      }
-      refInput.value = '';
-      showToast(`Ajustando cena: "${val}"...`);
-      handleProductionSubmit();
-    };
-    if (refBtn) refBtn.addEventListener('click', triggerRefine);
-    if (refInput) {
-      refInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') triggerRefine();
+    const sliderRefl = document.getElementById('slider-reflection');
+    const sliderReflVal = document.getElementById('slider-reflection-val');
+    if (sliderRefl && sliderReflVal) {
+      sliderRefl.addEventListener('input', () => {
+        const val = parseInt(sliderRefl.value, 10);
+        state.productStudio.reflectionIntensity = val / 100.0;
+        sliderReflVal.textContent = `${val}%`;
+        debouncedProductStudioProcess();
       });
+    }
+
+    document.querySelectorAll('[data-refl-preset]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const val = parseInt(btn.getAttribute('data-refl-preset'), 10);
+        if (sliderRefl) sliderRefl.value = val;
+        if (sliderReflVal) sliderReflVal.textContent = `${val}%`;
+        state.productStudio.reflectionIntensity = val / 100.0;
+        executeProductStudio();
+      });
+    });
+
+    const sliderScale = document.getElementById('slider-scale');
+    const sliderScaleVal = document.getElementById('slider-scale-val');
+    if (sliderScale && sliderScaleVal) {
+      sliderScale.addEventListener('input', () => {
+        const val = parseInt(sliderScale.value, 10);
+        state.productStudio.productScale = val / 100.0;
+        sliderScaleVal.textContent = `${val}%`;
+        debouncedProductStudioProcess();
+      });
+    }
+
+    document.querySelectorAll('#light-temp-group button').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const temp = btn.getAttribute('data-temp');
+        state.productStudio.lightingTemperature = temp;
+        document.querySelectorAll('#light-temp-group button').forEach((b) => {
+          b.classList.toggle('is-active', b === btn);
+        });
+        executeProductStudio();
+      });
+    });
+
+    document.querySelectorAll('#quick-template-chips button').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const tmpl = btn.getAttribute('data-tmpl');
+        state.productStudio.templateId = tmpl;
+        document.querySelectorAll('#quick-template-chips button').forEach((b) => {
+          b.classList.toggle('is-active', b === btn);
+        });
+        executeProductStudio();
+      });
+    });
+
+    // 10. Central de Exportação E-Commerce (1 Clique)
+    const exportPackBtn = document.getElementById('export-full-pack-btn');
+    if (exportPackBtn) {
+      exportPackBtn.addEventListener('click', async () => {
+        if (!state.originalImageBase64) return;
+        const origText = exportPackBtn.innerHTML;
+        exportPackBtn.innerHTML = '<span>Gerando Pacote ZIP (1:1, 4:5, 9:16)...</span>';
+        exportPackBtn.classList.add('opacity-70', 'pointer-events-none');
+        try {
+          const resp = await fetch('/api/product-studio/export-pack', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              image_base64: state.originalImageBase64,
+              settings: {
+                template_id: state.productStudio.templateId,
+                aspect_ratio: '1:1',
+                shadow_intensity: state.productStudio.shadowIntensity,
+                reflection_intensity: state.productStudio.reflectionIntensity,
+                product_scale: state.productStudio.productScale,
+                lighting_temperature: state.productStudio.lightingTemperature,
+              },
+            }),
+          });
+          if (!resp.ok) throw new Error('Falha ao exportar pacote');
+          const blob = await resp.blob();
+          triggerBrowserDownload(blob, `lumen_produto_${state.productStudio.templateId}_pack.zip`);
+          showToast('Pacote ZIP com os 4 formatos baixado!');
+        } catch (e) {
+          showToast('Erro ao exportar ZIP: ' + e.message);
+        } finally {
+          exportPackBtn.innerHTML = origText;
+          exportPackBtn.classList.remove('opacity-70', 'pointer-events-none');
+          initIcons();
+        }
+      });
+    }
+
+    const exportMlBtn = document.getElementById('export-ml-btn');
+    if (exportMlBtn) {
+      exportMlBtn.addEventListener('click', async () => {
+        if (state.productStudio.aspectRatio === '1:1' && state.productStudio.resultBase64) {
+          triggerBrowserDownload(state.productStudio.resultBase64, 'produto_mercadolivre_1x1.jpg');
+          showToast('Foto 1:1 baixada!');
+        } else {
+          await executeProductStudio({ aspect_ratio: '1:1' });
+          if (state.productStudio.resultBase64) {
+            triggerBrowserDownload(state.productStudio.resultBase64, 'produto_mercadolivre_1x1.jpg');
+            showToast('Foto 1:1 baixada!');
+          }
+        }
+      });
+    }
+
+    const exportFeedBtn = document.getElementById('export-feed-btn');
+    if (exportFeedBtn) {
+      exportFeedBtn.addEventListener('click', async () => {
+        await executeProductStudio({ aspect_ratio: '4:5' });
+        if (state.productStudio.resultBase64) {
+          triggerBrowserDownload(state.productStudio.resultBase64, 'produto_instagram_feed_4x5.jpg');
+          showToast('Foto 4:5 Instagram baixada!');
+        }
+      });
+    }
+
+    const exportStoriesBtn = document.getElementById('export-stories-btn');
+    if (exportStoriesBtn) {
+      exportStoriesBtn.addEventListener('click', async () => {
+        await executeProductStudio({ aspect_ratio: '9:16' });
+        if (state.productStudio.resultBase64) {
+          triggerBrowserDownload(state.productStudio.resultBase64, 'produto_stories_9x16.jpg');
+          showToast('Foto 9:16 Stories baixada!');
+        }
+      });
+    }
+
+    const exportPngBtn = document.getElementById('export-png-btn');
+    if (exportPngBtn) {
+      exportPngBtn.addEventListener('click', () => {
+        if (state.productStudio.cutoutBase64) {
+          triggerBrowserDownload(state.productStudio.cutoutBase64, 'produto_recortado_alpha.png');
+          showToast('Recorte PNG transparente baixado!');
+        } else {
+          showToast('Aguarde o processamento do recorte...');
+        }
+      });
+    }
+
+    const bottomReRenderBtn = document.getElementById('bottom-re-render-btn');
+    if (bottomReRenderBtn) {
+      bottomReRenderBtn.addEventListener('click', () => executeProductStudio());
+    }
+
+    const bottomExportBtn = document.getElementById('bottom-export-btn');
+    if (bottomExportBtn) {
+      bottomExportBtn.addEventListener('click', () => {
+        if (state.productStudio.resultBase64) {
+          const ext = state.productStudio.templateId === 'transparent' ? 'png' : 'jpg';
+          triggerBrowserDownload(state.productStudio.resultBase64, `produto_lumen_${state.productStudio.templateId}.${ext}`);
+          showToast('Imagem baixada com sucesso!');
+        }
+      });
+    }
+
+    const backToStep2Btn = document.getElementById('editor-back-to-step2-btn');
+    if (backToStep2Btn) {
+      backToStep2Btn.addEventListener('click', () => setStudioStep(2));
+    }
+    const newPhotoBtn = document.getElementById('editor-new-photo-btn');
+    if (newPhotoBtn) {
+      newPhotoBtn.addEventListener('click', () => setStudioStep(1));
     }
 
     // 12. Barra de Ação Inferior: Desfazer, Refazer, Gerar Nova Versão, Exportar

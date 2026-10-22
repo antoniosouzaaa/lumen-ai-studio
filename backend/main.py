@@ -10,9 +10,20 @@ import httpx
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+import time
+
+from backend.product_studio import (
+    ProductStudioRequest,
+    ProductStudioResponse,
+    ProductStudioSettings,
+    TEMPLATES_CATALOG,
+    generate_export_pack_zip,
+    generate_sample_product_bytes,
+    render_product_studio_scene,
+)
 
 from backend.orchestra import (
     AddPinRequest,
@@ -477,6 +488,93 @@ async def api_color_balance(payload: WhiteBalanceRequest):
         )
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Erro ao calibrar balanço de branco: {exc}") from exc
+
+
+@app.get("/api/product-studio/templates")
+async def api_product_studio_templates():
+    return {"templates": TEMPLATES_CATALOG}
+
+
+@app.get("/api/product-studio/samples")
+async def api_product_studio_samples():
+    sample_ids = [
+        ("perfume", "Frasco de Perfume de Luxo", "Perfumaria"),
+        ("sneaker", "Tênis Esportivo Streetwear", "Calçados"),
+        ("serum", "Sérum Skincare Facial", "Skincare"),
+        ("coffee", "Café Gourmet Especial", "Alimentos"),
+    ]
+    samples = []
+    for sid, name, cat in sample_ids:
+        raw_bytes = generate_sample_product_bytes(sid)
+        b64 = "data:image/png;base64," + base64.b64encode(raw_bytes).decode("utf-8")
+        samples.append({"id": sid, "name": name, "category": cat, "image_base64": b64})
+    return {"samples": samples}
+
+
+@app.post("/api/product-studio/process")
+async def api_product_studio_process(payload: ProductStudioRequest):
+    if not payload.image_base64 or len(payload.image_base64) < 32:
+        raise HTTPException(status_code=422, detail="Fotografia de produto é obrigatória.")
+    try:
+        t0 = time.time()
+        raw = payload.image_base64
+        if "," in raw:
+            raw = raw.split(",", 1)[1]
+        img_bytes = base64.b64decode(raw)
+
+        res_bytes, cutout_bytes, orig_bytes, w, h = await asyncio.to_thread(
+            render_product_studio_scene,
+            img_bytes,
+            payload.settings,
+        )
+
+        dt_ms = round((time.time() - t0) * 1000.0, 1)
+
+        mime_res = "image/png" if payload.settings.template_id == "transparent" else "image/jpeg"
+        res_b64 = f"data:{mime_res};base64," + base64.b64encode(res_bytes).decode("utf-8")
+        cutout_b64 = "data:image/png;base64," + base64.b64encode(cutout_bytes).decode("utf-8")
+        orig_b64 = "data:image/jpeg;base64," + base64.b64encode(orig_bytes).decode("utf-8")
+
+        return ProductStudioResponse(
+            result_base64=res_b64,
+            cutout_base64=cutout_b64,
+            original_base64=orig_b64,
+            template_id=payload.settings.template_id,
+            aspect_ratio=payload.settings.aspect_ratio,
+            width=w,
+            height=h,
+            processing_time_ms=dt_ms,
+        )
+    except Exception as exc:
+        logger.error("Erro ao processar estúdio de produto: %s", exc, exc_info=True)
+        raise HTTPException(status_code=400, detail=f"Erro ao processar produto: {exc}") from exc
+
+
+@app.post("/api/product-studio/export-pack")
+async def api_product_studio_export_pack(payload: ProductStudioRequest):
+    if not payload.image_base64 or len(payload.image_base64) < 32:
+        raise HTTPException(status_code=422, detail="Fotografia de produto é obrigatória.")
+    try:
+        raw = payload.image_base64
+        if "," in raw:
+            raw = raw.split(",", 1)[1]
+        img_bytes = base64.b64decode(raw)
+
+        zip_bytes = await asyncio.to_thread(
+            generate_export_pack_zip,
+            img_bytes,
+            payload.settings,
+            "lumen_produto",
+        )
+
+        return Response(
+            content=zip_bytes,
+            media_type="application/zip",
+            headers={"Content-Disposition": 'attachment; filename="lumen_product_pack.zip"'},
+        )
+    except Exception as exc:
+        logger.error("Erro ao exportar pacote ZIP: %s", exc, exc_info=True)
+        raise HTTPException(status_code=400, detail=f"Erro ao exportar pacote: {exc}") from exc
 
 
 if STATIC_DIR.exists():

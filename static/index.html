@@ -71,10 +71,10 @@
     <div class="flex items-center gap-3">
       <div class="flex items-baseline gap-2">
         <span class="lumen-brand-wordmark">LUMEN</span>
-        <span class="lumen-brand-descriptor">Co-Pilot</span>
+        <span class="lumen-brand-descriptor">Product Studio AI</span>
       </div>
       <span class="hidden md:inline-block h-3.5 w-px bg-border" aria-hidden="true"></span>
-      <p class="hidden md:block lumen-brand-slogan m-0">Simulador 360°, Ficha Técnica de Set & Edição de Estúdio</p>
+      <p class="hidden md:block lumen-brand-slogan m-0">Estúdio de Fotos de Produtos para E-Commerce & Marketplaces</p>
     </div>
 
     <!-- Seletor do Projeto Atual, Save Indicator & Status -->
@@ -189,10 +189,10 @@
             <div class="flex flex-col items-center gap-2">
               <span class="text-xs font-mono uppercase tracking-widest text-accent font-semibold">Passo 1 de 3</span>
               <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-ivory m-0 font-editorial">
-                Comece com a sua imagem
+                Fotografia de Produto para E-Commerce
               </h1>
               <p class="text-sm text-text-secondary m-0 max-w-md leading-relaxed">
-                Adicione uma fotografia para melhorar iluminação, recortar produto ou criar variações editoriais com fidelidade real.
+                Tire uma foto simples com o celular na mesa. O LUMEN recorta o fundo e posiciona seu produto em cenários de alta conversão para Mercado Livre, Shopee e Amazon.
               </p>
             </div>
 
@@ -203,55 +203,48 @@
               class="lumen-dropzone-hero w-full flex flex-col items-center justify-center gap-3 p-8 cursor-pointer"
               tabindex="0"
               role="button"
-              aria-label="Área para arrastar ou selecionar fotografia"
+              aria-label="Área para arrastar ou selecionar foto do produto"
             >
               <div class="w-14 h-14 rounded-full bg-surface border border-border flex items-center justify-center shadow-inner group-hover:scale-105 transition-transform">
-                <i data-lucide="upload-cloud" class="w-7 h-7 text-accent" aria-hidden="true"></i>
+                <i data-lucide="package-search" class="w-7 h-7 text-accent" aria-hidden="true"></i>
               </div>
               <div class="flex flex-col items-center gap-1">
-                <span class="text-sm font-semibold text-ivory">Arraste uma foto aqui ou clique para selecionar</span>
-                <span class="text-xs text-text-muted">Formatos JPG, PNG, WEBP até 25MB</span>
+                <span class="text-sm font-semibold text-ivory">Arraste a foto do produto aqui ou clique para selecionar</span>
+                <span class="text-xs text-text-muted">JPG, PNG ou WEBP feitos no celular ou câmera (até 25MB)</span>
               </div>
               <button type="button" id="hero-browse-btn" class="lumen-btn-primary w-auto px-5 py-2 text-xs mt-1">
-                <i data-lucide="plus" class="w-3.5 h-3.5" aria-hidden="true"></i>
-                <span>Adicionar foto</span>
+                <i data-lucide="upload" class="w-3.5 h-3.5" aria-hidden="true"></i>
+                <span>Selecionar foto do produto</span>
               </button>
             </div>
 
             <!-- Garantia de Transparência Não-Destrutiva -->
-            <div class="flex items-center gap-2 text-xs text-text-muted bg-surface/60 px-3 py-1.5 rounded-full border border-border">
+            <div class="flex items-center gap-2 text-xs text-text-muted bg-surface/60 px-3.5 py-1.5 rounded-full border border-border">
               <i data-lucide="shield-check" class="w-3.5 h-3.5 text-accent" aria-hidden="true"></i>
-              <span>Sua foto original permanece intacta. Trabalhamos em camadas não-destrutivas.</span>
+              <span>Garantia comercial: rótulo, embalagem e geometria 100% preservados sem distorções.</span>
             </div>
 
-            <!-- Amostras Demo para Teste Rápido -->
-            <div class="flex flex-col items-center gap-2 mt-3 pt-3 border-t border-border w-full">
-              <span class="text-[11px] font-mono text-text-muted uppercase tracking-wider">Ou teste com uma amostra de estúdio:</span>
+            <!-- Amostras Demo para Teste Rápido em 1 Clique -->
+            <div class="flex flex-col items-center gap-2.5 mt-3 pt-3 border-t border-border w-full">
+              <span class="text-[11px] font-mono text-text-muted uppercase tracking-wider">Ou teste com um produto de amostra:</span>
               <div class="flex flex-wrap justify-center gap-2">
-                <button type="button" class="lumen-sample-chip lumen-preset-chip" data-sample="portrait">
-                  <i data-lucide="user" class="w-3.5 h-3.5 text-accent" aria-hidden="true"></i>
-                  <span>Retrato editorial</span>
-                </button>
                 <button type="button" class="lumen-sample-chip lumen-preset-chip" data-sample="perfume">
                   <i data-lucide="sparkles" class="w-3.5 h-3.5 text-accent" aria-hidden="true"></i>
-                  <span>Garrafa de perfume</span>
+                  <span>Perfume de Luxo</span>
                 </button>
                 <button type="button" class="lumen-sample-chip lumen-preset-chip" data-sample="sneaker">
                   <i data-lucide="box" class="w-3.5 h-3.5 text-accent" aria-hidden="true"></i>
-                  <span>Tênis esportivo</span>
+                  <span>Tênis Streetwear</span>
                 </button>
-                <button type="button" class="lumen-sample-chip lumen-preset-chip" data-sample="fashion">
-                  <i data-lucide="camera" class="w-3.5 h-3.5 text-accent" aria-hidden="true"></i>
-                  <span>Moda comercial</span>
+                <button type="button" class="lumen-sample-chip lumen-preset-chip" data-sample="serum">
+                  <i data-lucide="droplet" class="w-3.5 h-3.5 text-accent" aria-hidden="true"></i>
+                  <span>Sérum Skincare</span>
+                </button>
+                <button type="button" class="lumen-sample-chip lumen-preset-chip" data-sample="coffee">
+                  <i data-lucide="coffee" class="w-3.5 h-3.5 text-accent" aria-hidden="true"></i>
+                  <span>Café Gourmet</span>
                 </button>
               </div>
-            </div>
-
-            <!-- Opção de Criar do Zero -->
-            <div class="pt-1">
-              <button type="button" id="start-from-scratch-btn" class="text-xs text-text-secondary hover:text-accent transition-colors underline decoration-dotted">
-                Ou crie uma fotografia do zero com direção de iluminação &rarr;
-              </button>
             </div>
 
           </div>
@@ -259,166 +252,178 @@
 
 
         <!-- ===================================================================
-             PASSO 2: DIZER O QUE QUER MELHORAR (4 INTENÇÕES GUIADAS)
+             PASSO 2: ESCOLHER CENÁRIO COMERCIAL DE ESTÚDIO
              =================================================================== -->
-        <section id="studio-step-intent" class="lumen-guided-flow hidden flex flex-col items-center justify-center p-6 min-h-[70vh]">
-          <div class="w-full max-w-2xl flex flex-col gap-5">
+        <section id="studio-step-intent" class="lumen-guided-flow hidden flex flex-col items-center justify-center p-4 sm:p-6 min-h-[70vh]">
+          <div class="w-full max-w-3xl flex flex-col gap-4">
             
             <!-- Topo do Passo 2 com Botão Voltar -->
-            <div class="flex items-center justify-between pb-3 border-b border-border">
+            <div class="flex items-center justify-between pb-2 border-b border-border">
               <button type="button" id="intent-back-btn" class="lumen-btn-secondary text-xs py-1.5 px-3">
                 <i data-lucide="arrow-left" class="w-3.5 h-3.5" aria-hidden="true"></i>
                 <span>Trocar foto</span>
               </button>
-              <span class="text-xs font-mono uppercase tracking-widest text-accent font-semibold">Passo 2 de 3</span>
+              <span class="text-xs font-mono uppercase tracking-widest text-accent font-semibold">Passo 2 de 3 · Cenário de Venda</span>
               <div class="w-20"></div>
             </div>
 
             <!-- Título e Subtítulo -->
-            <div class="text-center flex flex-col gap-1.5">
-              <h2 class="text-2xl font-bold tracking-tight text-ivory m-0 font-editorial">
-                O que você quer melhorar nesta foto?
+            <div class="text-center flex flex-col gap-1">
+              <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-ivory m-0 font-editorial">
+                Escolha o Cenário Comercial do Produto
               </h2>
               <p class="text-xs text-text-secondary m-0">
-                Selecione uma intenção. O LUMEN calculará a geometria de luz ideal automaticamente.
+                Selecione o estilo ideal para seu produto. O LUMEN recorta o fundo e projeta sombra de contato e reflexo com fidelidade óptica real.
               </p>
             </div>
 
             <!-- Preview Compacto da Imagem Carregada -->
-            <div class="flex items-center gap-3 p-3 rounded-lg bg-surface border border-border">
-              <img id="intent-thumbnail-img" class="w-14 h-14 object-cover rounded border border-border" alt="Foto Selecionada" />
+            <div class="flex items-center gap-3 p-2.5 rounded-lg bg-surface border border-border">
+              <img id="intent-thumbnail-img" class="w-12 h-12 object-cover rounded border border-border" alt="Foto Selecionada" />
               <div class="flex flex-col flex-1">
-                <span id="intent-filename-text" class="text-xs font-semibold text-ivory">fotografia_master.jpg</span>
-                <span id="intent-filesize-text" class="text-[11px] text-text-muted font-mono">Foto de entrada pronta para intervenção não-destrutiva</span>
+                <span id="intent-filename-text" class="text-xs font-semibold text-ivory">produto_original.jpg</span>
+                <span id="intent-filesize-text" class="text-[11px] text-text-muted font-mono">Produto isolado em alta resolução</span>
               </div>
-              <span class="text-xs text-accent font-semibold px-2 py-1 bg-surface-active rounded border border-accent/30">Pronta</span>
+              <span class="text-xs text-accent font-semibold px-2 py-0.5 bg-surface-active rounded border border-accent/30 flex items-center gap-1">
+                <i data-lucide="check" class="w-3 h-3"></i>
+                <span>Pronto</span>
+              </span>
             </div>
 
-            <!-- Grade de 4 Intenções Principais -->
-            <div class="lumen-intent-grid grid grid-cols-1 sm:grid-cols-2 gap-3" role="radiogroup" aria-label="Selecione a intenção de melhoria">
+            <!-- Grade de 8 Cenários Comerciais -->
+            <div class="lumen-intent-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5" role="radiogroup" aria-label="Selecione o cenário comercial">
               
-              <!-- Intenção 1: Luz & Atmosfera -->
-              <div
-                class="lumen-intent-card is-selected"
-                data-intent="light"
-                tabindex="0"
-                role="radio"
-                aria-checked="true"
-              >
-                <div class="flex items-center gap-2.5">
-                  <div class="w-9 h-9 rounded-md bg-surface border border-border flex items-center justify-center text-accent">
-                    <i data-lucide="sun-medium" class="w-5 h-5" aria-hidden="true"></i>
+              <!-- 1. Branco Oficial Mercado Livre -->
+              <div class="lumen-intent-card is-selected cursor-pointer p-3 rounded-lg border flex flex-col justify-between gap-2" data-template-id="white_market" tabindex="0" role="radio" aria-checked="true">
+                <div class="flex flex-col gap-1">
+                  <div class="flex items-center justify-between">
+                    <span class="w-3.5 h-3.5 rounded-full bg-white border border-border shadow-sm inline-block"></span>
+                    <span class="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-accent/20 text-accent font-semibold">Oficial</span>
                   </div>
-                  <div>
-                    <h3 class="text-xs font-bold text-ivory m-0">Luz & Atmosfera</h3>
-                    <p class="text-[11px] text-text-muted m-0">Reiluminar, ajustar contraste e clima</p>
-                  </div>
+                  <h3 class="text-xs font-bold text-ivory m-0">Branco Puro Oficial</h3>
+                  <p class="text-[11px] text-accent m-0 font-medium">Mercado Livre & Amazon</p>
                 </div>
-                <p class="text-[11px] text-text-secondary m-0 leading-relaxed">
-                  Redireciona luz principal, adiciona contraluz rim light e harmoniza temperatura de cor da cena.
-                </p>
+                <p class="text-[10px] text-text-muted m-0 leading-tight">Fundo 100% #FFFFFF com sombra de contato e reflexo sutil.</p>
               </div>
 
-              <!-- Intenção 2: Foto de Produto -->
-              <div
-                class="lumen-intent-card"
-                data-intent="product"
-                tabindex="0"
-                role="radio"
-                aria-checked="false"
-              >
-                <div class="flex items-center gap-2.5">
-                  <div class="w-9 h-9 rounded-md bg-surface border border-border flex items-center justify-center text-accent">
-                    <i data-lucide="package" class="w-5 h-5" aria-hidden="true"></i>
+              <!-- 2. Mármore & Luxo -->
+              <div class="lumen-intent-card cursor-pointer p-3 rounded-lg border flex flex-col justify-between gap-2" data-template-id="marble_luxury" tabindex="0" role="radio" aria-checked="false">
+                <div class="flex flex-col gap-1">
+                  <div class="flex items-center justify-between">
+                    <span class="w-3.5 h-3.5 rounded-full bg-[#E5E5E9] border border-border inline-block"></span>
+                    <span class="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-surface border border-border text-text-muted">Premium</span>
                   </div>
-                  <div>
-                    <h3 class="text-xs font-bold text-ivory m-0">Foto de Produto</h3>
-                    <p class="text-[11px] text-text-muted m-0">Fundo comercial limpo e luz de catálogo</p>
-                  </div>
+                  <h3 class="text-xs font-bold text-ivory m-0">Mármore & Luxo</h3>
+                  <p class="text-[11px] text-text-secondary m-0">Cosméticos & Perfumes</p>
                 </div>
-                <p class="text-[11px] text-text-secondary m-0 leading-relaxed">
-                  Realce de texturas de materiais, reflexos especulares e isolamento de fundo de estúdio de alta definição.
-                </p>
+                <p class="text-[10px] text-text-muted m-0 leading-tight">Bancada de mármore Carrara claro com iluminação suave.</p>
               </div>
 
-              <!-- Intenção 3: Retrato Profissional -->
-              <div
-                class="lumen-intent-card"
-                data-intent="portrait"
-                tabindex="0"
-                role="radio"
-                aria-checked="false"
-              >
-                <div class="flex items-center gap-2.5">
-                  <div class="w-9 h-9 rounded-md bg-surface border border-border flex items-center justify-center text-accent">
-                    <i data-lucide="user-check" class="w-5 h-5" aria-hidden="true"></i>
+              <!-- 3. Pódio Minimalista -->
+              <div class="lumen-intent-card cursor-pointer p-3 rounded-lg border flex flex-col justify-between gap-2" data-template-id="minimalist_podium" tabindex="0" role="radio" aria-checked="false">
+                <div class="flex flex-col gap-1">
+                  <div class="flex items-center justify-between">
+                    <span class="w-3.5 h-3.5 rounded-full bg-[#D8D2C6] border border-border inline-block"></span>
+                    <span class="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-surface border border-border text-text-muted">Estúdio 3D</span>
                   </div>
-                  <div>
-                    <h3 class="text-xs font-bold text-ivory m-0">Retrato Profissional</h3>
-                    <p class="text-[11px] text-text-muted m-0">Luz suave Rembrandt e tom de pele</p>
-                  </div>
+                  <h3 class="text-xs font-bold text-ivory m-0">Pódio Minimalista</h3>
+                  <p class="text-[11px] text-text-secondary m-0">Tênis & Eletrônicos</p>
                 </div>
-                <p class="text-[11px] text-text-secondary m-0 leading-relaxed">
-                  Luz envolvente de beauty dish, separação sutil do fundo e preservação rigorosa da identidade facial.
-                </p>
+                <p class="text-[10px] text-text-muted m-0 leading-tight">Pódio cilíndrico de estúdio em tom marfim com luz direcional.</p>
               </div>
 
-              <!-- Intenção 4: Estilo Editorial -->
-              <div
-                class="lumen-intent-card"
-                data-intent="editorial"
-                tabindex="0"
-                role="radio"
-                aria-checked="false"
-              >
-                <div class="flex items-center gap-2.5">
-                  <div class="w-9 h-9 rounded-md bg-surface border border-border flex items-center justify-center text-accent">
-                    <i data-lucide="film" class="w-5 h-5" aria-hidden="true"></i>
+              <!-- 4. Madeira Rústica & Café -->
+              <div class="lumen-intent-card cursor-pointer p-3 rounded-lg border flex flex-col justify-between gap-2" data-template-id="rustic_wood" tabindex="0" role="radio" aria-checked="false">
+                <div class="flex flex-col gap-1">
+                  <div class="flex items-center justify-between">
+                    <span class="w-3.5 h-3.5 rounded-full bg-[#523A28] border border-border inline-block"></span>
+                    <span class="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-surface border border-border text-text-muted">Gourmet</span>
                   </div>
-                  <div>
-                    <h3 class="text-xs font-bold text-ivory m-0">Estilo Editorial</h3>
-                    <p class="text-[11px] text-text-muted m-0">Grão 35mm cinematográfico e contraste</p>
-                  </div>
+                  <h3 class="text-xs font-bold text-ivory m-0">Madeira & Café</h3>
+                  <p class="text-[11px] text-text-secondary m-0">Alimentos & Bebidas</p>
                 </div>
-                <p class="text-[11px] text-text-secondary m-0 leading-relaxed">
-                  Estética fine art contemporânea, tons de preto aveludados e atmosfera de revista de moda.
-                </p>
+                <p class="text-[10px] text-text-muted m-0 leading-tight">Tampo de madeira nobre com luz ambiente dourada e acolhedora.</p>
+              </div>
+
+              <!-- 5. Botânico & Skincare -->
+              <div class="lumen-intent-card cursor-pointer p-3 rounded-lg border flex flex-col justify-between gap-2" data-template-id="nature_botanical" tabindex="0" role="radio" aria-checked="false">
+                <div class="flex flex-col gap-1">
+                  <div class="flex items-center justify-between">
+                    <span class="w-3.5 h-3.5 rounded-full bg-[#CCD5C8] border border-border inline-block"></span>
+                    <span class="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-surface border border-border text-text-muted">Orgânico</span>
+                  </div>
+                  <h3 class="text-xs font-bold text-ivory m-0">Botânico & Natural</h3>
+                  <p class="text-[11px] text-text-secondary m-0">Linha Skincare & Bem-Estar</p>
+                </div>
+                <p class="text-[10px] text-text-muted m-0 leading-tight">Tons pastel com sombras suaves projetadas de folhagem tropical.</p>
+              </div>
+
+              <!-- 6. Cinza Neutro 18% -->
+              <div class="lumen-intent-card cursor-pointer p-3 rounded-lg border flex flex-col justify-between gap-2" data-template-id="studio_grey" tabindex="0" role="radio" aria-checked="false">
+                <div class="flex flex-col gap-1">
+                  <div class="flex items-center justify-between">
+                    <span class="w-3.5 h-3.5 rounded-full bg-[#4A4C52] border border-border inline-block"></span>
+                    <span class="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-surface border border-border text-text-muted">Catálogo</span>
+                  </div>
+                  <h3 class="text-xs font-bold text-ivory m-0">Cinza Neutro 18%</h3>
+                  <p class="text-[11px] text-text-secondary m-0">Técnico & Vestuário</p>
+                </div>
+                <p class="text-[10px] text-text-muted m-0 leading-tight">Fundo infinito cinza estúdio com foco central difuso.</p>
+              </div>
+
+              <!-- 7. Onyx Dark Tech -->
+              <div class="lumen-intent-card cursor-pointer p-3 rounded-lg border flex flex-col justify-between gap-2" data-template-id="studio_dark" tabindex="0" role="radio" aria-checked="false">
+                <div class="flex flex-col gap-1">
+                  <div class="flex items-center justify-between">
+                    <span class="w-3.5 h-3.5 rounded-full bg-[#1A1B20] border border-border inline-block"></span>
+                    <span class="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-surface border border-border text-text-muted">Dark</span>
+                  </div>
+                  <h3 class="text-xs font-bold text-ivory m-0">Onyx Dark Tech</h3>
+                  <p class="text-[11px] text-text-secondary m-0">Hardware & Bebidas</p>
+                </div>
+                <p class="text-[10px] text-text-muted m-0 leading-tight">Grafite escuro dramático com reflexo espelhado brilhante.</p>
+              </div>
+
+              <!-- 8. Recorte Transparente -->
+              <div class="lumen-intent-card cursor-pointer p-3 rounded-lg border flex flex-col justify-between gap-2" data-template-id="transparent" tabindex="0" role="radio" aria-checked="false">
+                <div class="flex flex-col gap-1">
+                  <div class="flex items-center justify-between">
+                    <i data-lucide="scissors" class="w-3.5 h-3.5 text-accent"></i>
+                    <span class="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-surface border border-border text-text-muted">PNG</span>
+                  </div>
+                  <h3 class="text-xs font-bold text-ivory m-0">Recorte Alpha Puro</h3>
+                  <p class="text-[11px] text-text-secondary m-0">Banners & Criação</p>
+                </div>
+                <p class="text-[10px] text-text-muted m-0 leading-tight">Fundo transparente sem perdas para montagens e artes.</p>
               </div>
 
             </div>
 
-            <!-- Instrução Personalizada Opcional (Nunca Obrigatória) -->
-            <div class="flex flex-col gap-1.5">
-              <button type="button" id="intent-custom-toggle" class="text-xs text-text-muted hover:text-ivory flex items-center gap-1.5 self-start">
-                <i data-lucide="chevron-right" class="w-3.5 h-3.5 transition-transform" id="intent-custom-icon" aria-hidden="true"></i>
-                <span>Adicionar instrução criativa personalizada (opcional)</span>
-              </button>
-              <div id="intent-custom-box" class="hidden">
-                <textarea
-                  id="intent-custom-input"
-                  rows="2"
-                  class="lumen-textarea text-xs w-full"
-                  placeholder="Ex: Luz quente de fim de tarde entrando pela lateral, com sombras alongadas e elegantes…"
-                ></textarea>
-              </div>
-            </div>
-
-            <!-- Resumo da Proposta e Botão de Ação -->
+            <!-- Seletor de Formato de Saída & Botão Gerar -->
             <div class="p-3.5 rounded-lg bg-surface border border-border flex flex-col sm:flex-row items-center justify-between gap-3">
-              <div class="flex flex-col gap-0.5 text-center sm:text-left">
-                <span class="text-[10px] font-mono uppercase tracking-wider text-text-muted">Proposta Calculada</span>
-                <p id="intent-proposal-summary" class="text-xs font-semibold text-ivory m-0">
-                  Luz & Atmosfera: Reiluminação com foco em Rembrandt suave a 315° e preenchimento equilibrado.
-                </p>
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-semibold text-ivory">Formato:</span>
+                <div class="flex items-center gap-1.5" id="template-ratio-group">
+                  <button type="button" class="lumen-natural-chip is-active" data-ratio="1:1" title="1200x1200px para Mercado Livre, Shopee e Amazon">
+                    1:1 Mercado Livre
+                  </button>
+                  <button type="button" class="lumen-natural-chip" data-ratio="4:5" title="1080x1350px para Feed Instagram">
+                    4:5 Instagram Feed
+                  </button>
+                  <button type="button" class="lumen-natural-chip" data-ratio="9:16" title="1080x1920px para Stories e Reels">
+                    9:16 Stories / TikTok
+                  </button>
+                </div>
               </div>
-              <button type="button" id="intent-generate-btn" class="lumen-btn-primary w-full sm:w-auto px-6 py-2.5 text-xs whitespace-nowrap">
+
+              <button type="button" id="intent-generate-btn" class="lumen-btn-primary w-full sm:w-auto px-6 py-2.5 text-xs whitespace-nowrap shadow-lg">
                 <i data-lucide="sparkles" class="w-4 h-4" aria-hidden="true"></i>
-                <span>Gerar proposta</span>
+                <span>Criar Foto de Estúdio</span>
               </button>
             </div>
 
             <p class="text-[11px] text-text-muted text-center m-0">
-              Você poderá ajustar todos os parâmetros no editor a seguir.
+              Processamento instantâneo em &lt;1s com sombra de contato e reflexo físico editáveis.
             </p>
 
           </div>
@@ -671,114 +676,138 @@
 
             </div>
 
-            <!-- PAINEL CONTEXTUAL LATERAL (AJUSTES RÁPIDOS + HISTÓRICO) -->
+            <!-- PAINEL CONTEXTUAL LATERAL: CONTROLES DE ESTÚDIO & EXPORTAÇÃO -->
             <aside class="lumen-context-panel w-full lg:w-80 flex flex-col gap-3 rounded-lg bg-surface border border-border p-3.5">
               
-              <!-- Intenção Ativa & Troca -->
-              <div class="flex items-center justify-between pb-2.5 border-b border-border">
-                <div class="flex items-center gap-2">
-                  <span id="editor-intent-icon" class="w-6 h-6 rounded bg-surface-active border border-accent/30 flex items-center justify-center text-accent text-xs">
-                    <i data-lucide="sun-medium" class="w-3.5 h-3.5" aria-hidden="true"></i>
-                  </span>
-                  <div>
-                    <span class="text-[10px] font-mono text-text-muted uppercase block leading-none">Intenção Ativa</span>
-                    <span id="editor-intent-title" class="text-xs font-bold text-ivory">Luz & Atmosfera</span>
-                  </div>
-                </div>
-                <button type="button" id="editor-change-intent-btn" class="text-[11px] text-accent hover:underline cursor-pointer">
-                  Mudar
-                </button>
-              </div>
-
-              <!-- OS 3 CONTROLES CONTEXTUAIS DA INTENÇÃO -->
-              <div class="flex flex-col gap-3">
-                <span class="text-[11px] font-mono uppercase tracking-wider text-text-muted">Ajustes da Direção</span>
-
-                <!-- Slider 1: Intensidade da Intervenção -->
-                <div class="flex flex-col gap-1">
-                  <div class="flex items-center justify-between text-xs">
-                    <span class="text-text-secondary">Intensidade da intervenção</span>
-                    <span id="slider-intensity-val" class="font-mono text-accent font-semibold">65%</span>
-                  </div>
-                  <input type="range" id="slider-intensity" min="10" max="100" value="65" class="lumen-slider" />
-                  <span class="text-[10px] text-text-muted flex justify-between"><span>Sutil</span><span>Intenso</span></span>
-                </div>
-
-                <!-- Slider 2: Direção da Luz Principal -->
-                <div class="flex flex-col gap-1">
-                  <div class="flex items-center justify-between text-xs">
-                    <span class="text-text-secondary">Direção da luz (360°)</span>
-                    <span id="slider-light-val" class="font-mono text-accent font-semibold">315° (Esquerda)</span>
-                  </div>
-                  <input type="range" id="slider-light" min="0" max="360" step="15" value="315" class="lumen-slider" />
-                  <span class="text-[10px] text-text-muted flex justify-between"><span>Frontal</span><span>Lateral</span><span>Contraluz</span></span>
-                </div>
-
-                <!-- Slider 3: Tratamento do Fundo / Atmosfera -->
-                <div class="flex flex-col gap-1">
-                  <div class="flex items-center justify-between text-xs">
-                    <span class="text-text-secondary">Tratamento do fundo</span>
-                    <span id="slider-bg-val" class="font-mono text-accent font-semibold">Neutro Suave</span>
-                  </div>
-                  <input type="range" id="slider-bg" min="0" max="100" value="50" class="lumen-slider" />
-                  <span class="text-[10px] text-text-muted flex justify-between"><span>Original</span><span>Desfocado</span><span>Estúdio</span></span>
-                </div>
-              </div>
-
-              <!-- Chips Rápidos de Direção (1 Clique) -->
-              <div class="flex flex-col gap-1.5 pt-2 border-t border-border">
-                <span class="text-[11px] font-mono uppercase tracking-wider text-text-muted">Ajustes Rápidos</span>
-                <div class="flex flex-wrap gap-1.5">
-                  <button type="button" class="lumen-preset-chip py-1 px-2.5 text-[11px]" data-quick-tweak="warmer">
-                    <span>Mais quente</span>
-                  </button>
-                  <button type="button" class="lumen-preset-chip py-1 px-2.5 text-[11px]" data-quick-tweak="softer">
-                    <span>Luz suave</span>
-                  </button>
-                  <button type="button" class="lumen-preset-chip py-1 px-2.5 text-[11px]" data-quick-tweak="dramatic">
-                    <span>Dramático</span>
-                  </button>
-                  <button type="button" class="lumen-preset-chip py-1 px-2.5 text-[11px]" data-quick-tweak="clean_bg">
-                    <span>Fundo neutro</span>
-                  </button>
-                </div>
-              </div>
-
-              <!-- Instrução em Linguagem Natural (Conversar com a Foto) -->
-              <div class="flex flex-col gap-1.5 pt-2 border-t border-border">
-                <label for="refinement-input" class="text-[11px] font-mono uppercase tracking-wider text-text-muted">
-                  Conversar com a Foto
-                </label>
-                <div class="flex items-center gap-1.5">
-                  <input
-                    type="text"
-                    id="refinement-input"
-                    class="flex-1 bg-bg border border-border rounded px-2.5 py-1.5 text-xs text-ivory placeholder:text-text-muted focus:border-accent"
-                    placeholder="Ex: Suavizar sombras no pescoço…"
-                  />
-                  <button type="button" id="apply-refinement-btn" class="lumen-btn-secondary py-1.5 px-2.5 text-xs font-semibold shrink-0 text-accent border-accent/40">
-                    Aplicar
-                  </button>
-                </div>
-              </div>
-
-              <!-- Histórico de Versões do Ensaio (v1, v2, v3...) -->
-              <div class="flex flex-col gap-1.5 pt-2 border-t border-border flex-1">
+              <!-- Cenário Ativo & Troca Rápida -->
+              <div class="flex flex-col gap-1.5 pb-2.5 border-b border-border">
                 <div class="flex items-center justify-between">
-                  <span class="text-[11px] font-mono uppercase tracking-wider text-text-muted">Versões do Ensaio</span>
-                  <span id="version-count-badge" class="font-mono text-[10px] text-accent">1 versão</span>
+                  <span class="text-[10px] font-mono text-text-muted uppercase tracking-wider">Cenário Comercial</span>
+                  <span id="active-template-badge" class="text-[10px] font-mono text-accent font-semibold px-1.5 py-0.5 rounded bg-surface-active border border-accent/30">Mercado Livre</span>
                 </div>
-                <div id="version-history-list" class="flex flex-col gap-1.5 max-h-36 overflow-y-auto pr-1">
-                  <!-- Inserido dinamicamente -->
+                <!-- Mini Grade de Troca de Cenário -->
+                <div class="grid grid-cols-4 gap-1.5 pt-1" id="quick-template-chips">
+                  <button type="button" class="lumen-btn-secondary p-1 text-[10px] text-center is-active flex flex-col items-center gap-0.5" data-tmpl="white_market" title="Branco Puro #FFFFFF">
+                    <span class="w-3 h-3 rounded-full bg-white border border-border"></span>
+                    <span>Branco</span>
+                  </button>
+                  <button type="button" class="lumen-btn-secondary p-1 text-[10px] text-center flex flex-col items-center gap-0.5" data-tmpl="marble_luxury" title="Mármore Carrara">
+                    <span class="w-3 h-3 rounded-full bg-[#E5E5E9] border border-border"></span>
+                    <span>Mármore</span>
+                  </button>
+                  <button type="button" class="lumen-btn-secondary p-1 text-[10px] text-center flex flex-col items-center gap-0.5" data-tmpl="minimalist_podium" title="Pódio Minimalista">
+                    <span class="w-3 h-3 rounded-full bg-[#D8D2C6] border border-border"></span>
+                    <span>Pódio</span>
+                  </button>
+                  <button type="button" class="lumen-btn-secondary p-1 text-[10px] text-center flex flex-col items-center gap-0.5" data-tmpl="rustic_wood" title="Madeira Rústica">
+                    <span class="w-3 h-3 rounded-full bg-[#523A28] border border-border"></span>
+                    <span>Madeira</span>
+                  </button>
+                  <button type="button" class="lumen-btn-secondary p-1 text-[10px] text-center flex flex-col items-center gap-0.5" data-tmpl="nature_botanical" title="Botânico & Natural">
+                    <span class="w-3 h-3 rounded-full bg-[#CCD5C8] border border-border"></span>
+                    <span>Botânico</span>
+                  </button>
+                  <button type="button" class="lumen-btn-secondary p-1 text-[10px] text-center flex flex-col items-center gap-0.5" data-tmpl="studio_grey" title="Cinza Neutro 18%">
+                    <span class="w-3 h-3 rounded-full bg-[#4A4C52] border border-border"></span>
+                    <span>Cinza 18%</span>
+                  </button>
+                  <button type="button" class="lumen-btn-secondary p-1 text-[10px] text-center flex flex-col items-center gap-0.5" data-tmpl="studio_dark" title="Onyx Dark Tech">
+                    <span class="w-3 h-3 rounded-full bg-[#1A1B20] border border-border"></span>
+                    <span>Dark</span>
+                  </button>
+                  <button type="button" class="lumen-btn-secondary p-1 text-[10px] text-center flex flex-col items-center gap-0.5" data-tmpl="transparent" title="Recorte Alpha PNG">
+                    <i data-lucide="scissors" class="w-3 h-3 text-accent"></i>
+                    <span>PNG</span>
+                  </button>
                 </div>
               </div>
 
-              <!-- Botão para Abrir Gaveta Avançada -->
-              <div class="pt-2 border-t border-border">
-                <button type="button" id="open-advanced-drawer-btn" class="lumen-btn-secondary w-full text-xs py-2 flex items-center justify-center gap-2">
-                  <i data-lucide="sliders" class="w-4 h-4 text-accent" aria-hidden="true"></i>
-                  <span>Ajustes avançados de estúdio</span>
+              <!-- CONTROLES FÍSICOS DE ESTÚDIO (SUBSTITUI PHOTOSHOP EM SEGUNDOS) -->
+              <div class="flex flex-col gap-3">
+                <span class="text-[11px] font-mono uppercase tracking-wider text-text-muted">Iluminação & Física de Contato</span>
+
+                <!-- Slider 1: Sombra de Contato Físico (Ambient Occlusion) -->
+                <div class="flex flex-col gap-1">
+                  <div class="flex items-center justify-between text-xs">
+                    <span class="text-text-secondary">Sombra de contato na base</span>
+                    <span id="slider-shadow-val" class="font-mono text-accent font-semibold">55%</span>
+                  </div>
+                  <input type="range" id="slider-shadow" min="0" max="100" value="55" class="lumen-slider" />
+                  <div class="flex items-center justify-between text-[10px] text-text-muted">
+                    <button type="button" class="hover:text-ivory" data-shadow-preset="0">Sem sombra</button>
+                    <button type="button" class="hover:text-ivory" data-shadow-preset="30">Suave</button>
+                    <button type="button" class="hover:text-ivory" data-shadow-preset="60">Média</button>
+                    <button type="button" class="hover:text-ivory" data-shadow-preset="90">Marcada</button>
+                  </div>
+                </div>
+
+                <!-- Slider 2: Reflexo de Chão / Espelho -->
+                <div class="flex flex-col gap-1">
+                  <div class="flex items-center justify-between text-xs">
+                    <span class="text-text-secondary">Reflexo de chão (espelho)</span>
+                    <span id="slider-reflection-val" class="font-mono text-accent font-semibold">25%</span>
+                  </div>
+                  <input type="range" id="slider-reflection" min="0" max="100" value="25" class="lumen-slider" />
+                  <div class="flex items-center justify-between text-[10px] text-text-muted">
+                    <button type="button" class="hover:text-ivory" data-refl-preset="0">Desativado</button>
+                    <button type="button" class="hover:text-ivory" data-refl-preset="20">Sutil</button>
+                    <button type="button" class="hover:text-ivory" data-refl-preset="45">Elegante</button>
+                    <button type="button" class="hover:text-ivory" data-refl-preset="75">Espelhado</button>
+                  </div>
+                </div>
+
+                <!-- Slider 3: Escala / Tamanho do Produto -->
+                <div class="flex flex-col gap-1">
+                  <div class="flex items-center justify-between text-xs">
+                    <span class="text-text-secondary">Tamanho do produto (enquadramento)</span>
+                    <span id="slider-scale-val" class="font-mono text-accent font-semibold">100%</span>
+                  </div>
+                  <input type="range" id="slider-scale" min="60" max="140" value="100" class="lumen-slider" />
+                  <span class="text-[10px] text-text-muted flex justify-between"><span>60% (Mais ar)</span><span>100%</span><span>140% (Close-up)</span></span>
+                </div>
+
+                <!-- Temperatura de Luz -->
+                <div class="flex flex-col gap-1 pt-1 border-t border-border">
+                  <span class="text-[10px] font-mono uppercase tracking-wider text-text-muted">Temperatura de Luz</span>
+                  <div class="grid grid-cols-3 gap-1.5" id="light-temp-group">
+                    <button type="button" class="lumen-preset-chip text-center is-active text-[11px] py-1" data-temp="neutral">Neutra (5500K)</button>
+                    <button type="button" class="lumen-preset-chip text-center text-[11px] py-1" data-temp="warm">Quente (3200K)</button>
+                    <button type="button" class="lumen-preset-chip text-center text-[11px] py-1" data-temp="cool">Fria (6500K)</button>
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- CENTRAL DE EXPORTAÇÃO E-COMMERCE -->
+              <div class="flex flex-col gap-2 pt-3 border-t border-border mt-auto">
+                <span class="text-[11px] font-mono uppercase tracking-wider text-accent font-semibold">Download em 1 Clique</span>
+
+                <!-- Botão Destaque: Pacote Completo ZIP -->
+                <button type="button" id="export-full-pack-btn" class="lumen-btn-primary w-full text-xs py-2.5 flex items-center justify-center gap-2 shadow-lg">
+                  <i data-lucide="package-check" class="w-4 h-4" aria-hidden="true"></i>
+                  <span>Baixar Pacote E-Commerce (ZIP)</span>
                 </button>
+                <span class="text-[10px] text-text-muted text-center">Inclui 1:1 Mercado Livre, 4:5 Feed, 9:16 Stories e PNG recortado</span>
+
+                <!-- Downloads Individuais Imediatos -->
+                <div class="grid grid-cols-2 gap-1.5 pt-1">
+                  <button type="button" id="export-ml-btn" class="lumen-btn-secondary text-[11px] py-1.5 px-2 flex items-center justify-center gap-1" title="1200x1200px">
+                    <i data-lucide="shopping-bag" class="w-3 h-3 text-accent"></i>
+                    <span>1:1 Marketplace</span>
+                  </button>
+                  <button type="button" id="export-feed-btn" class="lumen-btn-secondary text-[11px] py-1.5 px-2 flex items-center justify-center gap-1" title="1080x1350px">
+                    <i data-lucide="instagram" class="w-3 h-3 text-accent"></i>
+                    <span>4:5 Feed Insta</span>
+                  </button>
+                  <button type="button" id="export-stories-btn" class="lumen-btn-secondary text-[11px] py-1.5 px-2 flex items-center justify-center gap-1" title="1080x1920px">
+                    <i data-lucide="smartphone" class="w-3 h-3 text-accent"></i>
+                    <span>9:16 Stories</span>
+                  </button>
+                  <button type="button" id="export-png-btn" class="lumen-btn-secondary text-[11px] py-1.5 px-2 flex items-center justify-center gap-1" title="Fundo Transparente">
+                    <i data-lucide="scissors" class="w-3 h-3 text-accent"></i>
+                    <span>PNG Alpha</span>
+                  </button>
+                </div>
               </div>
 
             </aside>
@@ -788,34 +817,34 @@
           <!-- BARRA DE AÇÃO INFERIOR DO EDITOR -->
           <footer class="lumen-bottom-bar flex flex-wrap items-center justify-between gap-3 p-3 rounded-lg bg-surface border border-border">
             
-            <!-- Ações Secundárias: Desfazer / Refazer -->
-            <div class="flex items-center gap-1.5">
-              <button type="button" id="bottom-undo-btn" class="lumen-btn-secondary px-3 py-1.5 text-xs" title="Desfazer última alteração">
-                <i data-lucide="undo-2" class="w-3.5 h-3.5 inline mr-1" aria-hidden="true"></i>
-                <span>Desfazer</span>
+            <!-- Botão Voltar para Passo 2 (Trocar Cenário) -->
+            <div class="flex items-center gap-2">
+              <button type="button" id="editor-back-to-step2-btn" class="lumen-btn-secondary px-3 py-1.5 text-xs">
+                <i data-lucide="arrow-left" class="w-3.5 h-3.5 inline mr-1" aria-hidden="true"></i>
+                <span>Trocar Cenário</span>
               </button>
-              <button type="button" id="bottom-redo-btn" class="lumen-btn-secondary px-3 py-1.5 text-xs" title="Refazer alteração">
-                <i data-lucide="redo-2" class="w-3.5 h-3.5 inline mr-1" aria-hidden="true"></i>
-                <span>Refazer</span>
+              <button type="button" id="editor-new-photo-btn" class="lumen-btn-secondary px-3 py-1.5 text-xs text-text-secondary">
+                <i data-lucide="upload" class="w-3.5 h-3.5 inline mr-1" aria-hidden="true"></i>
+                <span>Nova Foto</span>
               </button>
             </div>
 
             <!-- Metadados da Versão Ativa -->
-            <div class="hidden md:flex items-center gap-2 text-xs text-text-muted">
+            <div class="flex items-center gap-2 text-xs text-text-muted">
               <span class="font-mono text-[11px] px-2.5 py-1 rounded bg-bg border border-border text-text-secondary" id="result-metadata-bar">
-                85mm · f/1.8 · Rembrandt 315° · Prova Linear
+                1200x1200px · Fundo Branco Oficial · Sombra Física Ativa
               </span>
             </div>
 
-            <!-- Ações Primárias: Gerar Nova Versão & Exportar -->
+            <!-- Ações Primárias -->
             <div class="flex items-center gap-2">
-              <button type="button" id="bottom-generate-btn" class="lumen-btn-primary px-4 py-2 text-xs">
-                <i data-lucide="sparkles" class="w-4 h-4" aria-hidden="true"></i>
-                <span>Gerar nova versão</span>
+              <button type="button" id="bottom-re-render-btn" class="lumen-btn-secondary px-4 py-2 text-xs font-semibold text-accent border-accent/40 hover:border-accent">
+                <i data-lucide="refresh-cw" class="w-3.5 h-3.5 inline mr-1"></i>
+                <span>Recalcular Luz</span>
               </button>
-              <button type="button" id="bottom-export-btn" class="lumen-btn-secondary px-4 py-2 text-xs font-semibold text-accent border-accent/40 hover:border-accent">
+              <button type="button" id="bottom-export-btn" class="lumen-btn-primary px-5 py-2 text-xs">
                 <i data-lucide="download" class="w-4 h-4 inline mr-1" aria-hidden="true"></i>
-                <span>Exportar</span>
+                <span>Baixar Imagem</span>
               </button>
             </div>
 
