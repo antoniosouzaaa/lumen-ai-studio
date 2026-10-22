@@ -2223,20 +2223,12 @@
   }
 
   function setupGuidedStudioFlow() {
-    // 1. Dropzone e Seleção de Arquivo (Passo 1)
+    // 1. Dropzone e Seleção de Arquivo Nativa (Passo 1)
     const heroDropzone = document.getElementById('hero-dropzone');
-    const heroBrowseBtn = document.getElementById('hero-browse-btn');
     const heroFileInput = document.getElementById('hero-file-input');
 
     if (heroFileInput) {
-      if (heroBrowseBtn) {
-        heroBrowseBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          heroFileInput.click();
-        });
-      }
       if (heroDropzone) {
-        heroDropzone.addEventListener('click', () => heroFileInput.click());
         heroDropzone.addEventListener('dragover', (e) => {
           e.preventDefault();
           heroDropzone.classList.add('border-accent', 'bg-surface-active');
@@ -2256,19 +2248,30 @@
       heroFileInput.addEventListener('change', (e) => {
         if (e.target.files && e.target.files[0]) {
           handleUploadedPhoto(e.target.files[0]);
+          heroFileInput.value = '';
         }
       });
     }
 
     function handleUploadedPhoto(file) {
-      if (!file.type.startsWith('image/')) {
+      if (!file) return;
+      const isImg = (file.type && file.type.startsWith('image/')) ||
+        /\.(jpe?g|png|webp|bmp|gif|tiff?)$/i.test(file.name || '');
+      if (!isImg) {
         showToast('Por favor, selecione um arquivo de imagem válido (JPG, PNG ou WEBP).');
         return;
       }
+      showToast('Carregando foto do produto...');
       const reader = new FileReader();
+      reader.onerror = () => {
+        showToast('Erro ao ler a imagem. Tente outro arquivo.');
+      };
       reader.onload = (ev) => {
         const rawDataUrl = ev.target.result;
         const tempImg = new Image();
+        tempImg.onerror = () => {
+          showToast('Formato de imagem não reconhecido.');
+        };
         tempImg.onload = () => {
           const maxDim = 1536;
           let w = tempImg.width;
@@ -2288,6 +2291,8 @@
           }
 
           state.originalImageBase64 = dataUrl;
+          state.productStudio.originalBase64 = dataUrl;
+          state.productStudio.resultBase64 = dataUrl;
           state.referenceImageBase64 = dataUrl.split(',')[1];
           state.referenceMimeType = 'image/jpeg';
           state.previousVersion = null;
@@ -2298,10 +2303,10 @@
           const filename = document.getElementById('intent-filename-text');
           const filesize = document.getElementById('intent-filesize-text');
           if (thumb) thumb.src = dataUrl;
-          if (filename) filename.textContent = file.name;
-          if (filesize) filesize.textContent = `${w}×${h}px · ${Math.round((dataUrl.length * 0.75) / 1024)} KB · Calibração Studio HD`;
+          if (filename) filename.textContent = file.name || 'foto_produto.jpg';
+          if (filesize) filesize.textContent = `${w}×${h}px · Pronto para estúdio comercial`;
 
-          // Atualiza imediatamente todos os visualizadores de palco com a foto importada
+          // Atualiza visualizadores de palco
           const splitBefore = document.getElementById('split-before-img');
           const splitAfter = document.getElementById('split-after-img');
           const resultImg = document.getElementById('result-image');
@@ -2314,11 +2319,10 @@
           if (sbsBefore) sbsBefore.src = dataUrl;
           if (sbsAfter) sbsAfter.src = dataUrl;
 
-          // Mantém o palco visível com a foto real
           document.getElementById('state-empty')?.classList.add('hidden');
           document.getElementById('state-success')?.classList.remove('hidden');
 
-          showToast('Foto importada e otimizada com sucesso!');
+          showToast('Foto importada com sucesso!');
           setStudioStep(2);
         };
         tempImg.src = rawDataUrl;
@@ -2860,12 +2864,8 @@
       bottomGenBtn.addEventListener('click', () => handleProductionSubmit());
     }
 
-    const bottomExportBtn = document.getElementById('bottom-export-btn');
     const exportBackdrop = document.getElementById('export-dialog-backdrop');
     const closeExportBtn = document.getElementById('close-export-dialog-btn');
-    if (bottomExportBtn && exportBackdrop) {
-      bottomExportBtn.addEventListener('click', () => exportBackdrop.classList.add('is-open'));
-    }
     if (closeExportBtn && exportBackdrop) {
       closeExportBtn.addEventListener('click', () => exportBackdrop.classList.remove('is-open'));
     }

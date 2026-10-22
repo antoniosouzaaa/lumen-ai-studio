@@ -54,7 +54,7 @@
   </script>
 
   <!-- Estilos e Design System LUMEN 6.0 -->
-  <link rel="stylesheet" href="/static/css/style.css?v=6.0" />
+  <link rel="stylesheet" href="/static/css/style.css?v=6.1" />
 
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -196,27 +196,28 @@
               </p>
             </div>
 
-            <!-- Hero Dropzone -->
-            <input type="file" id="hero-file-input" accept="image/*" class="hidden" />
-            <div
+            <!-- Hero Dropzone com ativação nativa por label -->
+            <input type="file" id="hero-file-input" accept="image/png,image/jpeg,image/webp,image/*" class="hidden" />
+            <label
+              for="hero-file-input"
               id="hero-dropzone"
-              class="lumen-dropzone-hero w-full flex flex-col items-center justify-center gap-3 p-8 cursor-pointer"
+              class="lumen-dropzone-hero w-full flex flex-col items-center justify-center gap-3 p-8 cursor-pointer select-none"
               tabindex="0"
               role="button"
               aria-label="Área para arrastar ou selecionar foto do produto"
             >
-              <div class="w-14 h-14 rounded-full bg-surface border border-border flex items-center justify-center shadow-inner group-hover:scale-105 transition-transform">
+              <div class="w-14 h-14 rounded-full bg-surface border border-border flex items-center justify-center shadow-inner group-hover:scale-105 transition-transform pointer-events-none">
                 <i data-lucide="package-search" class="w-7 h-7 text-accent" aria-hidden="true"></i>
               </div>
-              <div class="flex flex-col items-center gap-1">
+              <div class="flex flex-col items-center gap-1 pointer-events-none">
                 <span class="text-sm font-semibold text-ivory">Arraste a foto do produto aqui ou clique para selecionar</span>
                 <span class="text-xs text-text-muted">JPG, PNG ou WEBP feitos no celular ou câmera (até 25MB)</span>
               </div>
-              <button type="button" id="hero-browse-btn" class="lumen-btn-primary w-auto px-5 py-2 text-xs mt-1">
+              <span id="hero-browse-btn" class="lumen-btn-primary w-auto px-5 py-2 text-xs mt-1 pointer-events-none inline-flex items-center gap-1.5">
                 <i data-lucide="upload" class="w-3.5 h-3.5" aria-hidden="true"></i>
                 <span>Selecionar foto do produto</span>
-              </button>
-            </div>
+              </span>
+            </label>
 
             <!-- Garantia de Transparência Não-Destrutiva -->
             <div class="flex items-center gap-2 text-xs text-text-muted bg-surface/60 px-3.5 py-1.5 rounded-full border border-border">
@@ -1452,7 +1453,7 @@
   </div>
 
   <!-- Scripts da Aplicação -->
-  <script src="/static/js/db.js?v=6.0"></script>
-  <script src="/static/js/app.js?v=6.0"></script>
+  <script src="/static/js/db.js?v=6.1"></script>
+  <script src="/static/js/app.js?v=6.1"></script>
 </body>
 </html>
